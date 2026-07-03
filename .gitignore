@@ -1,0 +1,34 @@
+# Binaries and executables
+bin/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# SQLite databases (cache, history, favorites)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Configuration and local testing files
+*.yaml
+*.yml
+!config/config.yaml.example
+local_config.yaml
+scratch.go
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE and Editor configurations
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.gemini/
