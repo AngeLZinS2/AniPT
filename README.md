@@ -232,8 +232,14 @@ Para adicionar um novo provedor, veja [docs/PROVIDERS.md](docs/PROVIDERS.md).
 
 MIT License — veja [LICENSE](LICENSE) para detalhes.
 
----
-
 <div align="center">
 Feito com ❤️ para a comunidade anime brasileira
+
+### 👨‍💻 Desenvolvido por Angelo Neri
+**Gopher & Software Engineer**
+
+Gostou do projeto? Conecte-se no LinkedIn!
+
+[![LinkedIn Badge](https://img.shields.io/badge/LinkedIn-Angelo%20Neri-blue?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/angelo-neri-3921a72b9/)
+
 </div>
