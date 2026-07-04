@@ -1,0 +1,11 @@
+﻿# Garante que arquivos batch sempre ficam com CRLF no Windows
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Codigo-fonte usa LF padrao
+*.go text eol=lf
+*.md text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.mod text eol=lf
+*.sum text eol=lf
