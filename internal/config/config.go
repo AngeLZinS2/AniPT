@@ -151,8 +151,8 @@ quality: best
 # Preferred language: "dublado" (dubbed) or "legendado" (subbed)
 language: dublado
 
-# Active streaming provider: "all" (search all), "mock", "animesbr", "animefire", "goyabu", "kitsu", "multi"
-provider: all
+# Active streaming provider: "multi" (busca em todos), "animefire", "goyabu", "mock"
+provider: multi
 
 # Open the player in fullscreen mode
 fullscreen: true

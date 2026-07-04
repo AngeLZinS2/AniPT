@@ -48,50 +48,98 @@ AniPT é um cliente de terminal para assistir animes em **português do Brasil**
 
 ## 🚀 Instalação
 
-### Pré-requisitos
+### 🪟 Windows — Guia Passo a Passo (Sem precisar instalar nada extra!)
 
-- **mpv** (recomendado) ou **VLC** instalado
-  - Linux: `sudo apt install mpv` ou `sudo pacman -S mpv`
-  - macOS: `brew install mpv`
-  - Windows: Baixe em [mpv.io](https://mpv.io/installation/)
-- **Go 1.24+** (apenas para compilar do código-fonte)
+> **Objetivo**: apertar duplo clique e o AniPT abre direto no terminal. Sem código, sem configuração manual.
 
-### Binários pré-compilados
+#### Passo 1 — Baixe o mpv (player de vídeo)
 
-Baixe o binário para seu sistema na [página de releases](https://github.com/angeloneri/anipt/releases).
+O mpv é o programa que reproduz o vídeo dos animes. É gratuito e leve.
 
+1. Acesse: **https://mpv.io/installation/**
+2. Clique em **"Windows builds by shinchiro"** e baixe o arquivo `.7z` mais recente (ex: `mpv-x86_64-20240101.7z`)
+3. Extraia o arquivo para **`C:\mpv\`** — a estrutura deve ficar assim:
+   ```
+   C:\mpv\
+   ├── mpv.exe      ← este é o que o AniPT procura
+   ├── mpv.com
+   └── ...
+   ```
+
+> 💡 **Dica**: O AniPT procura automaticamente o mpv em `C:\mpv\mpv.exe`. Não precisa configurar PATH!
+
+#### Passo 2 — Baixe o AniPT
+
+1. Acesse a [página de releases](https://github.com/AngeLZinS2/AniPT/releases)
+2. Baixe o arquivo **`anipt.exe`** (Windows 64-bit)
+3. Baixe também o arquivo **`AniPT.bat`** (launcher)
+4. Coloque os dois arquivos na **mesma pasta**, por exemplo:
+   ```
+   C:\AniPT\
+   ├── anipt.exe    ← o aplicativo principal
+   └── AniPT.bat   ← clique duplo aqui para abrir!
+   ```
+
+#### Passo 3 — Execute!
+
+Dê **duplo clique** em `AniPT.bat`. Uma janela de terminal vai abrir com o AniPT pronto para uso.
+
+> ⚠️ **Atenção**: Não clique diretamente em `anipt.exe`. Use sempre o `AniPT.bat` para que a janela não feche sozinha.
+
+---
+
+### 🐧 Linux / macOS
+
+**Pré-requisitos:**
+```bash
+# Linux
+sudo apt install mpv   # Ubuntu/Debian
+sudo pacman -S mpv     # Arch
+
+# macOS
+brew install mpv
+```
+
+**Baixe e instale o binário:**
 ```bash
 # Linux (amd64)
-curl -L https://github.com/angeloneri/anipt/releases/latest/download/anipt-linux-amd64 -o anipt
+curl -L https://github.com/AngeLZinS2/AniPT/releases/latest/download/anipt-linux-amd64 -o anipt
 chmod +x anipt
 sudo mv anipt /usr/local/bin/
 
 # macOS (Apple Silicon)
-curl -L https://github.com/angeloneri/anipt/releases/latest/download/anipt-darwin-arm64 -o anipt
+curl -L https://github.com/AngeLZinS2/AniPT/releases/latest/download/anipt-darwin-arm64 -o anipt
 chmod +x anipt
 sudo mv anipt /usr/local/bin/
 ```
 
+Execute com:
+```bash
+anipt
+```
+
 ---
 
-## 🔨 Compilação
+## 🔨 Compilação (para desenvolvedores)
+
+Necessário apenas se quiser compilar do código-fonte.
 
 ```bash
-# Clone o repositório
-git clone https://github.com/angeloneri/anipt.git
-cd anipt
+# Requisitos: Go 1.24+
+git clone https://github.com/AngeLZinS2/AniPT.git
+cd AniPT
 
-# Instalar dependências
 go mod download
 
-# Compilar (binário em ./bin/anipt.exe ou ./bin/anipt)
+# Compilar para Windows
+GOOS=windows GOARCH=amd64 go build -o bin/anipt.exe ./cmd/anipt/
+
+# Compilar para Linux
+go build -o bin/anipt ./cmd/anipt/
+
+# Usando Makefile (Linux/macOS)
 make build
-
-# Compilar para todas as plataformas
 make cross-compile
-
-# Instalar globalmente
-make install
 ```
 
 ---
@@ -101,6 +149,10 @@ make install
 ### Interface interativa (TUI)
 
 ```bash
+# Windows (via launcher)
+AniPT.bat
+
+# Linux / macOS
 anipt
 ```
 
@@ -136,6 +188,7 @@ anipt config set provider animefire # Provedor (animefire | goyabu | multi)
 ```
 
 ---
+
 
 ## ⌨️ Atalhos de teclado
 
