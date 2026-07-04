@@ -6,6 +6,9 @@ bin/
 *.so
 *.dylib
 
+# Exception: allow the release Windows binary in the project root
+!anipt.exe
+
 # SQLite databases (cache, history, favorites)
 *.db
 *.db-journal
