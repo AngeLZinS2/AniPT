@@ -11,7 +11,7 @@ import (
 	_ "modernc.org/sqlite" // Register the sqlite driver.
 )
 
-// DB wraps the standard sql.DB and provides AniPT-specific helpers.
+// DB wraps the standard sql.DB and provides AniBR-specific helpers.
 type DB struct {
 	*sql.DB
 }

@@ -1,5 +1,5 @@
 // Package providers defines the Provider interface and utilities for managing
-// multiple streaming providers in AniPT.
+// multiple streaming providers in AniBR.
 package providers
 
 import (

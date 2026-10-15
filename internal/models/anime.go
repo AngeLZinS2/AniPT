@@ -1,4 +1,4 @@
-// Package models defines the core domain types for the AniPT application.
+// Package models defines the core domain types for the AniBR application.
 // These types are shared across all layers and providers.
 package models
 
@@ -31,6 +31,6 @@ type Anime struct {
 
 // Language constants represent the available audio/subtitle options.
 const (
-	LanguageDubbed  = "dublado"
-	LanguageSubbed  = "legendado"
+	LanguageDubbed = "dublado"
+	LanguageSubbed = "legendado"
 )

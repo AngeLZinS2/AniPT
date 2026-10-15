@@ -1,11 +1,11 @@
-// Package styles defines the AniPT design system using Lipgloss.
+// Package styles defines the AniBR design system using Lipgloss.
 // All colors, borders, and text styles are centralized here.
 // Components should reference these styles rather than defining their own.
 package styles
 
 import "github.com/charmbracelet/lipgloss"
 
-// Color palette — AniPT uses a blue/white/dark-gray theme.
+// Color palette — AniBR uses a blue/white/dark-gray theme.
 const (
 	ColorBackground   = lipgloss.Color("#0E1117") // Very dark background
 	ColorSurface      = lipgloss.Color("#1A2235") // Card / panel background
@@ -40,7 +40,7 @@ var PanelStyle = lipgloss.NewStyle().
 
 // --- Title & Header styles ---
 
-// BannerStyle renders the large AniPT logo text.
+// BannerStyle renders the large AniBR logo text.
 var BannerStyle = lipgloss.NewStyle().
 	Foreground(ColorPrimary).
 	Bold(true)

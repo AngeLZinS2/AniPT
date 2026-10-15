@@ -1,4 +1,4 @@
-// Package tui implements the BubbleTea-based terminal user interface for AniPT.
+// Package tui implements the BubbleTea-based terminal user interface for AniBR.
 // The App model acts as a state machine, managing navigation between all screens.
 package tui
 
@@ -50,17 +50,20 @@ const (
 // --- Tea messages ---
 
 type (
-	searchResultsMsg  struct{ animes []models.Anime }
-	seasonsMsg        struct{ seasons []models.Season }
-	episodesMsg       struct{ episodes []models.Episode }
-	streamsMsg        struct{ sources []models.StreamSource }
-	errorMsg          struct{ err error }
-	playerDoneMsg     struct{}
-	favToggledMsg     struct{ isFav bool; title string }
+	searchResultsMsg struct{ animes []models.Anime }
+	seasonsMsg       struct{ seasons []models.Season }
+	episodesMsg      struct{ episodes []models.Episode }
+	streamsMsg       struct{ sources []models.StreamSource }
+	errorMsg         struct{ err error }
+	playerDoneMsg    struct{}
+	favToggledMsg    struct {
+		isFav bool
+		title string
+	}
 	favoritesLoadedMsg struct{ items []list.Item }
-	historyLoadedMsg  struct{ items []list.Item }
-	animationTickMsg  time.Time
-	animeDetailsMsg   struct {
+	historyLoadedMsg   struct{ items []list.Item }
+	animationTickMsg   time.Time
+	animeDetailsMsg    struct {
 		synopsis  string
 		genres    []string
 		coverURL  string
@@ -80,11 +83,11 @@ func tickAnimation() tea.Cmd {
 // orchestrates navigation between screens.
 type App struct {
 	// Dependencies
-	cfg         *config.Config
-	provider    providers.Provider
-	registry    *providers.Registry
-	playerFact  *player.Factory
-	historySvc  *history.Service
+	cfg          *config.Config
+	provider     providers.Provider
+	registry     *providers.Registry
+	playerFact   *player.Factory
+	historySvc   *history.Service
 	favoritesSvc *favorites.Service
 
 	// Layout
@@ -181,7 +184,7 @@ func New(deps AppDeps) *App {
 		qualityList: qualityList,
 		favList:     favList,
 		histList:    histList,
-		catalogList:  catalogList,
+		catalogList: catalogList,
 
 		selectedLang:    deps.Config.Language,
 		selectedQuality: deps.Config.Quality,
@@ -355,7 +358,7 @@ func (a *App) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return a, a.doLoadHistory()
 			case "c":
 				// Open Config screen — for now open the TUI config view.
-				a.statusMsg = "⚙  Use 'anipt config' no terminal para editar as configurações."
+				a.statusMsg = "⚙  Use 'anibr config' no terminal para editar as configurações."
 				return a, nil
 			}
 		}
@@ -610,28 +613,28 @@ type kitsuAPIResponse struct {
 func fetchKitsuMetadata(ctx context.Context, title string) (string, string, string, error) {
 	client := &http.Client{Timeout: 8 * time.Second}
 	apiURL := fmt.Sprintf("https://kitsu.io/api/edge/anime?filter[text]=%s", url.QueryEscape(title))
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
 	if err != nil {
 		return "", "", "", err
 	}
-	
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", "", "", err
 	}
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", "", "", err
 	}
-	
+
 	var kr kitsuAPIResponse
 	if err := json.Unmarshal(body, &kr); err != nil {
 		return "", "", "", err
 	}
-	
+
 	if len(kr.Data) > 0 {
 		attr := kr.Data[0].Attributes
 		titlePTBR := attr.Titles["pt_br"]
@@ -640,44 +643,44 @@ func fetchKitsuMetadata(ctx context.Context, title string) (string, string, stri
 		}
 		return attr.Synopsis, attr.PosterImage.Medium, titlePTBR, nil
 	}
-	
+
 	return "", "", "", fmt.Errorf("no results")
 }
 
 func translateToPT(ctx context.Context, text string) (string, error) {
 	client := &http.Client{Timeout: 8 * time.Second}
 	apiURL := fmt.Sprintf("https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=pt&dt=t&q=%s", url.QueryEscape(text))
-	
+
 	req, err := http.NewRequestWithContext(ctx, "GET", apiURL, nil)
 	if err != nil {
 		return "", err
 	}
-	
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-	
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
-	
+
 	var raw []interface{}
 	if err := json.Unmarshal(body, &raw); err != nil {
 		return "", err
 	}
-	
+
 	if len(raw) == 0 {
 		return "", fmt.Errorf("empty response")
 	}
-	
+
 	first, ok := raw[0].([]interface{})
 	if !ok {
 		return "", fmt.Errorf("invalid format")
 	}
-	
+
 	var parts []string
 	for _, part := range first {
 		tuple, ok := part.([]interface{})
@@ -687,11 +690,11 @@ func translateToPT(ctx context.Context, text string) (string, error) {
 			}
 		}
 	}
-	
+
 	if len(parts) == 0 {
 		return "", fmt.Errorf("no translation found")
 	}
-	
+
 	return strings.Join(parts, ""), nil
 }
 
@@ -930,7 +933,7 @@ func (a *App) View() string {
 
 // viewHome renders the home screen with banner and main menu.
 func (a *App) viewHome() string {
-	// Simple color-pulsing animation for the ANIPT banner
+	// Simple color-pulsing animation for the ANIBR banner
 	colors := []string{"#4A90D9", "#6DB3F2", "#4A90D9", "#2A5FA5"}
 	colorIndex := a.animationFrame % len(colors)
 	animatedBanner := lipgloss.NewStyle().
@@ -1069,7 +1072,7 @@ func (a *App) viewError() string {
 
 // renderHeader renders a consistent top header bar.
 func (a *App) renderHeader(title string) string {
-	left := styles.BannerStyle.Render("AniPT")
+	left := styles.BannerStyle.Render("AniBR")
 	right := styles.TitleStyle.Render(title)
 	spacer := strings.Repeat(" ", max(0, a.width-lipgloss.Width(left)-lipgloss.Width(right)-4))
 	return styles.HeaderBarStyle.Width(a.width).Render(left + spacer + right)
@@ -1188,8 +1191,10 @@ func (i streamItem) FilterValue() string { return i.source.Quality }
 
 type favItem struct{ fav models.Favorite }
 
-func (i favItem) Title() string       { return i.fav.AnimeTitle }
-func (i favItem) Description() string { return fmt.Sprintf("%s • %s", i.fav.Provider, i.fav.AddedAt.Format("02/01/2006")) }
+func (i favItem) Title() string { return i.fav.AnimeTitle }
+func (i favItem) Description() string {
+	return fmt.Sprintf("%s • %s", i.fav.Provider, i.fav.AddedAt.Format("02/01/2006"))
+}
 func (i favItem) FilterValue() string { return i.fav.AnimeTitle }
 
 type histEntryItem struct{ entry models.HistoryEntry }
@@ -1238,12 +1243,12 @@ func streamsToListItems(sources []models.StreamSource) []list.Item {
 
 // homeBanner is the ASCII art logo displayed on the home screen.
 const homeBanner = `
-  ██████╗ ███╗   ██╗██╗██████╗ ████████╗
-  ██╔══██╗████╗  ██║██║██╔══██╗╚══██╔══╝
-  ███████║██╔██╗ ██║██║██████╔╝   ██║
-  ██╔══██║██║╚██╗██║██║██╔═══╝    ██║
-  ██║  ██║██║ ╚████║██║██║        ██║
-  ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝        ╚═╝`
+  █████╗ ███╗   ██╗██╗██████╗ ██████╗
+ ██╔══██╗████╗  ██║██║██╔══██╗██╔══██╗
+ ███████║██╔██╗ ██║██║██████╔╝██████╔╝
+ ██╔══██║██║╚██╗██║██║██╔══██╗██╔══██╗
+ ██║  ██║██║ ╚████║██║██║██████╔╝██║  ██║
+ ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═════╝ ╚═╝  ╚═╝`
 
 // min returns the smaller of two integers.
 func min(a, b int) int {

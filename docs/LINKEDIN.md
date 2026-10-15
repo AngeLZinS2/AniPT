@@ -1,10 +1,10 @@
 # AniBR — apresentação para LinkedIn
 
-Desenvolvi o AniBR como um projeto desktop de portfólio para explorar a construção de uma aplicação completa, da experiência de uso à distribuição para Windows.
+Desenvolvi o AniBR como um projeto de portfólio com duas formas de uso: aplicativo desktop e interface interativa no terminal.
 
-O projeto começou como AniPT, um cliente de terminal em Go, e evoluiu para uma interface em TypeScript com núcleo em Rust e Tauri 2. A proposta é reunir descoberta de animes, biblioteca pessoal, histórico e retomada de episódios em uma experiência em português.
+O projeto começou como AniPT, em Go. A CLI continua disponível, agora também chamada AniBR, com pesquisa, favoritos, histórico e reprodução por mpv/VLC. Para o desktop, construí uma interface em TypeScript com núcleo em Rust e Tauri 2, reunindo descoberta de animes, biblioteca pessoal e retomada de episódios em português.
 
-Integrei o catálogo do AniList, persistência com SQLite, instalação de fontes compatíveis e um player com suporte a HLS e torrents por meio do librqbit. Também trabalhei na correspondência entre obras e temporadas, no backup da biblioteca e nas preferências locais.
+No desktop, integrei o catálogo do AniList, persistência com SQLite, fontes compatíveis e um player com suporte a HLS e torrents pelo librqbit. Também trabalhei na identificação de temporadas, no backup e nas preferências locais.
 
 Na parte visual, criei uma apresentação com lettering SVG animado e um mosaico revelado por faixas que acompanham o mouse, respeitando a preferência por movimento reduzido. Preparei ainda um site responsivo, um vídeo de apresentação e versões instalável e portátil.
 

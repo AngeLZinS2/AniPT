@@ -1,4 +1,4 @@
-// Package utils provides shared HTTP, string, and terminal utilities for AniPT.
+// Package utils provides shared HTTP, string, and terminal utilities for AniBR.
 package utils
 
 import (

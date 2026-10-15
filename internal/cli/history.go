@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newHistoryCmd creates the `anipt history` subcommand.
+// newHistoryCmd creates the `anibr history` subcommand.
 func newHistoryCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "history",

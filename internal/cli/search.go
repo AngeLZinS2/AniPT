@@ -8,14 +8,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newSearchCmd creates the `anipt search [query]` subcommand.
+// newSearchCmd creates the `anibr search [query]` subcommand.
 // When a query is provided as an argument, it goes directly to search results.
 // Without a query, it launches the TUI home screen.
 func newSearchCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:     "search [query]",
 		Short:   "Pesquisar animes",
-		Example: "  anipt search \"dragon ball\"\n  anipt search naruto",
+		Example: "  anibr search \"dragon ball\"\n  anibr search naruto",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				// No query provided — launch TUI at home screen.
@@ -54,7 +54,7 @@ func newSearchCmd() *cobra.Command {
 				}
 			}
 			fmt.Println()
-			fmt.Println("Use `anipt` sem argumentos para a interface interativa completa.")
+			fmt.Println("Use `anibr` sem argumentos para a interface interativa completa.")
 
 			return nil
 		},

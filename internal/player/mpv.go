@@ -81,9 +81,9 @@ func buildMPVArgs(opts StreamOptions) []string {
 	}
 
 	// Save playback position on quit for future resume.
-	args = append(args, "--save-position-on-quit=no") // AniPT handles its own history.
+	args = append(args, "--save-position-on-quit=no") // AniBR handles its own history.
 
-	// Disable mpv's built-in cache for HLS streams (AniPT manages caching).
+	// Disable mpv's built-in cache for HLS streams (AniBR manages caching).
 	args = append(args, "--cache=yes")
 	args = append(args, "--demuxer-max-bytes=50MiB")
 
@@ -155,4 +155,3 @@ func mpvBinaryPath() string {
 		return ""
 	}
 }
-

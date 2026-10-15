@@ -1,6 +1,6 @@
-# Como criar um Provedor para AniPT
+# Como criar um Provedor para AniBR
 
-Este guia explica como implementar um novo provedor de streaming para o AniPT.
+Este guia explica como implementar um novo provedor de streaming para o AniBR.
 
 ---
 
@@ -112,7 +112,7 @@ Execute: `go test ./internal/providers/meuprovedor/...`
 ## 6. Configurar como provedor padrão
 
 ```bash
-anipt config set provider meuprovedor
+anibr config set provider meuprovedor
 ```
 
 Ou no `config.yaml`:

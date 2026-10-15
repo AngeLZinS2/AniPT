@@ -139,8 +139,8 @@ func getConfigDir() (string, error) {
 func createDefaultConfig(configDir string) error {
 	configPath := filepath.Join(configDir, configFileName+".yaml")
 
-	content := `# AniPT Configuration
-# Anime CLI PT-BR — https://github.com/angeloneri/anipt
+	content := `# AniBR Configuration
+# Anime CLI PT-BR — https://github.com/AngeLZinS2/AniPT
 
 # Media player: "mpv" or "vlc"
 player: mpv

@@ -1,4 +1,6 @@
-# Migração do CLI Go para desktop Rust
+# Desenvolvimento do desktop Rust e continuidade da CLI Go
+
+O projeto mantém **desktop e CLI** como formas de uso do AniBR. As etapas abaixo registram o planejamento da implementação desktop; não representam descontinuação da CLI.
 
 ## Ordem recomendada
 
@@ -9,7 +11,7 @@
 5. Expor comandos para busca, detalhes, temporadas, episódios, favoritos, histórico e configurações.
 6. Construir as telas usando somente o mock; depois conectar AnimeFire, Goyabu e o agregador.
 7. Integrar mpv/VLC e empacotar o `.exe`; manter mensagens claras quando o player estiver ausente.
-8. Remover o código Go somente depois de paridade funcional e validação dos dados do usuário.
+8. Preservar a CLI Go como forma de uso paralela, com compilação e documentação próprias.
 
 ## Compatibilidade de dados
 
@@ -21,4 +23,4 @@
 
 ## Critério de paridade
 
-Busca, catálogo, detalhes, temporadas, episódios, idioma, qualidade, favoritos, histórico, continuar assistindo, cache, configurações e abertura do player devem funcionar no desktop antes de descontinuar o CLI.
+Busca, catálogo, detalhes, temporadas, episódios, idioma, qualidade, favoritos, histórico, continuar assistindo, cache, configurações e abertura do player orientam a implementação desktop. A CLI continua disponível independentemente da paridade entre as interfaces.

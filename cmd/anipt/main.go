@@ -1,5 +1,5 @@
-// AniPT — Anime CLI Brasileiro
-// Entry point for the anipt command.
+// AniBR — Anime CLI Brasileiro
+// Compatibility entry point; the canonical command lives in cmd/anibr.
 package main
 
 import (

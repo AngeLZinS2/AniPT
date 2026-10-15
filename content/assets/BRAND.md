@@ -1,6 +1,6 @@
 # Identidade de conteúdo
 
-- Nome do produto: **AniPT**.
+- Nome do produto: **AniBR**.
 - Idioma padrão: português do Brasil (`pt-BR`).
 - Tom: direto, acolhedor e curto; evite jargão técnico na interface.
 - Termos canônicos: **anime**, **temporada**, **episódio**, **dublado**, **legendado**, **provedor** e **reprodutor**.

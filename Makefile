@@ -1,9 +1,9 @@
-# AniPT Makefile
-# Build, test, and cross-compile targets for the AniPT project.
+# AniBR Makefile
+# Build, test, and cross-compile targets for the AniBR project.
 
-BINARY_NAME := anipt
+BINARY_NAME := anibr
 MODULE      := github.com/angeloneri/anipt
-CMD_PATH    := ./cmd/anipt
+CMD_PATH    := ./cmd/anibr
 VERSION     := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 LDFLAGS     := -ldflags="-s -w -X '$(MODULE)/internal/version.Version=$(VERSION)'"
 
@@ -75,5 +75,5 @@ clean:
 
 ## help: Show this help message
 help:
-	@echo "AniPT — Comandos disponíveis:"
+	@echo "AniBR — Comandos disponíveis:"
 	@sed -n 's/^##//p' $(MAKEFILE_LIST) | column -t -s ':' | sed -e 's/^/ /'

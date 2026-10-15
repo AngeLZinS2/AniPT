@@ -4,9 +4,9 @@
 
 # AniBR
 
-### Catálogo, biblioteca pessoal e reprodução · Projeto desktop de portfólio
+### Catálogo, biblioteca pessoal e reprodução · Desktop e CLI
 
-Aplicativo em português do Brasil desenvolvido por **Angelo Neri** com **Rust, Tauri 2 e TypeScript**. Reúne descoberta de animes, organização pessoal e um player integrado, com dados pessoais armazenados localmente.
+Projeto em português do Brasil desenvolvido por **Angelo Neri**, disponível como **aplicativo desktop em Rust, Tauri 2 e TypeScript** e **CLI em Go com interface interativa no terminal**. Reúne descoberta de animes, organização pessoal e reprodução, com dados pessoais armazenados localmente.
 
 **[Conhecer o projeto e assistir à apresentação ↗](http://173.212.251.120:8085/)** · **[Baixar para Windows](http://173.212.251.120:8085/#download)** · **[Como adicionar fontes](http://173.212.251.120:8085/#fontes)** · **[LinkedIn](https://www.linkedin.com/in/angelo-neri-3921a72b9/)**
 
@@ -14,7 +14,14 @@ Aplicativo em português do Brasil desenvolvido por **Angelo Neri** com **Rust, 
 
 ## O projeto
 
-O AniBR nasceu da evolução do **AniPT**, um cliente de terminal escrito em Go. A versão desktop mantém essa história no repositório e propõe uma experiência visual própria: descobrir uma obra, organizar o que assistir e retomar um episódio no ponto salvo.
+O AniBR começou como AniPT e hoje mantém duas formas de uso: **desktop e terminal**, ambas com o nome AniBR. A CLI em Go continua disponível com pesquisa, favoritos, histórico e reprodução por mpv/VLC. O desktop oferece uma interface visual própria e player integrado.
+
+| Versão | Interface e reprodução | Como iniciar |
+| --- | --- | --- |
+| Desktop | Interface gráfica; player integrado, HLS e torrents | [Instalador ou portátil Windows](http://173.212.251.120:8085/#download) |
+| CLI | Terminal interativo em Go; player externo mpv/VLC | [`AniBR.bat`](AniBR.bat) no Windows ou comando `anibr` |
+
+As duas versões têm integrações próprias; os addons e o motor torrent documentados abaixo pertencem ao desktop. Consulte o [guia da CLI](docs/CLI.md) para os comandos e provedores do terminal.
 
 Trabalhei tanto na interface quanto na integração com serviços externos, persistência, reprodução e distribuição para Windows. O catálogo utiliza metadados do AniList; as fontes de reprodução são instaladas pela pessoa e têm sua disponibilidade verificada separadamente.
 
@@ -52,6 +59,7 @@ O nome é opcional e fica no dispositivo. Também é possível continuar sem se 
 | --- | --- |
 | Interface desktop | TypeScript, Vite, HTML, CSS e SVG |
 | Aplicativo nativo | Rust e Tauri 2 |
+| CLI e terminal interativo | Go, Cobra, Bubble Tea, Lipgloss e Viper |
 | Persistência | SQLite, configuração YAML e armazenamento local do WebView |
 | Catálogo e identificação | AniList e correspondência de identidade com Kitsu |
 | Reprodução | HTML5 Video, hls.js e WebView2 no Windows |
@@ -91,7 +99,7 @@ Ambas as versões utilizam WebView2 e os dados locais do perfil do Windows. O po
 
 Para adicionar uma fonte, abra **Configurações → Fontes instaladas**, informe o endereço do manifest e use **Adicionar fonte** e **Testar fonte**. O [guia ilustrado no site](http://173.212.251.120:8085/#fontes) mostra o processo e o acesso ao catálogo comunitário de addons.
 
-## Executar localmente
+## Executar o desktop localmente
 
 Pré-requisitos: **Node.js 20+**, npm, Rust estável e ambiente nativo do Tauri. No Windows, instale as ferramentas C++ do Visual Studio Build Tools e o WebView2.
 
@@ -116,7 +124,24 @@ npm run build
 
 Os instaladores são gerados em `src-tauri/target/release/bundle/` e o executável em `src-tauri/target/release/anipt.exe`. O nome visível é AniBR; o identificador `br.com.anipt.desktop` preserva a continuidade dos dados locais.
 
-A versão 0.3.1 foi validada com **42 testes de frontend**, **20 testes Rust aprovados** e compilação dos pacotes Windows. Dois testes Rust que dependem de rede são opcionais e ficam ignorados na execução padrão. A disponibilidade dos serviços externos continua dependendo da rede e das fontes.
+A versão desktop 0.3.1 foi validada com **42 testes de frontend**, **20 testes Rust aprovados** e compilação dos pacotes Windows. Dois testes Rust que dependem de rede são opcionais e ficam ignorados na execução padrão. A disponibilidade dos serviços externos continua dependendo da rede e das fontes.
+
+## Usar a CLI AniBR
+
+No Windows, mantenha `AniBR.bat` e `anibr.exe` da raiz na mesma pasta e abra o launcher. Para reproduzir vídeos, instale mpv ou VLC. Os atalhos que ainda usam `AniPT.bat` encaminham para o launcher AniBR.
+
+Com **Go 1.24+**, é possível executar e compilar a CLI sem instalar Node.js ou Rust:
+
+```powershell
+go run ./cmd/anibr --help
+go run ./cmd/anibr
+go build -o anibr.exe ./cmd/anibr
+.\anibr.exe search "naruto"
+```
+
+No Linux/macOS, compile com `go build -o bin/anibr ./cmd/anibr` e execute `./bin/anibr`. Verificações da CLI: `go test ./...` e `go vet ./...`.
+
+O nome exibido e o comando passam a ser AniBR/`anibr`. Os caminhos `anipt/config.yaml`, `anipt.db` e as variáveis `ANIPT_` são preservados para compatibilidade com configurações, favoritos e histórico existentes. Veja o [guia completo da CLI](docs/CLI.md).
 
 ## Estrutura do repositório
 
@@ -128,12 +153,13 @@ website/                Site estático e configuração de publicação na VPS
 videos/anibr-showcase/  Projeto editável do vídeo de apresentação
 scripts/                Preparação de mídia e prévia local do site
 docs/                   Guias, créditos e documentação do projeto
-cmd/ e internal/        Implementação histórica da CLI Go
+cmd/anibr/ e internal/  CLI AniBR em Go e interface de terminal
+cmd/anipt/              Entrada compatível com comandos de desenvolvimento antigos
 ```
 
 Prévia local do site: `node scripts/serve-anibr-site.mjs`, em `http://127.0.0.1:5180/`. O código estático está em `website/dist/` e não precisa de build. Os instaladores ficam fora do Git; veja [preparação dos downloads e publicação](website/deploy/README.md).
 
-Guias: [primeiro acesso](docs/PRIMEIRO_ACESSO.md), [fontes e provedores](docs/PROVIDERS.md), [CLI legada](docs/CLI_LEGADO.md) e [apresentação para LinkedIn](docs/LINKEDIN.md). O `anipt.exe` da raiz e `AniPT.bat` pertencem à CLI antiga; para o desktop, utilize os downloads acima.
+Guias: [primeiro acesso](docs/PRIMEIRO_ACESSO.md), [provedores da CLI](docs/PROVIDERS.md), [CLI AniBR](docs/CLI.md) e [apresentação para LinkedIn](docs/LINKEDIN.md). O `anibr.exe` da raiz é a CLI; os pacotes desktop estão nos downloads acima.
 
 ## Integrações e limites
 

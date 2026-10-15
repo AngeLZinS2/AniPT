@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newFavoritesCmd creates the `anipt favorites` subcommand.
+// newFavoritesCmd creates the `anibr favorites` subcommand.
 func newFavoritesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "favorites",
@@ -20,7 +20,7 @@ func newFavoritesCmd() *cobra.Command {
 
 			if len(favs) == 0 {
 				fmt.Println("Lista de favoritos vazia.")
-				fmt.Println("Use a interface interativa (anipt) e pressione Ctrl+F para favoritar um anime.")
+				fmt.Println("Use a interface interativa (anibr) e pressione Ctrl+F para favoritar um anime.")
 				return nil
 			}
 

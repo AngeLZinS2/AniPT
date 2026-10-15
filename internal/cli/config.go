@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// newConfigCmd creates the `anipt config` subcommand for viewing and editing settings.
+// newConfigCmd creates the `anibr config` subcommand for viewing and editing settings.
 func newConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
@@ -26,7 +26,7 @@ func newConfigCmd() *cobra.Command {
 			fmt.Printf("  auto_next:  %v\n", cfg.AutoNext)
 			fmt.Printf("  database:   %s\n", cfg.DatabasePath)
 			fmt.Println()
-			fmt.Println("Use 'anipt config set <key> <value>' para alterar uma configuração.")
+			fmt.Println("Use 'anibr config set <key> <value>' para alterar uma configuração.")
 			return nil
 		},
 	}
@@ -36,11 +36,11 @@ func newConfigCmd() *cobra.Command {
 		Use:   "set <key> <value>",
 		Short: "Alterar uma configuração",
 		Args:  cobra.ExactArgs(2),
-		Example: `  anipt config set player vlc
-  anipt config set quality 720p
-  anipt config set language legendado
-  anipt config set provider animefire
-  anipt config set fullscreen true`,
+		Example: `  anibr config set player vlc
+  anibr config set quality 720p
+  anibr config set language legendado
+  anibr config set provider animefire
+  anibr config set fullscreen true`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			key := args[0]
 			value := args[1]

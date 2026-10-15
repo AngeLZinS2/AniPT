@@ -1,4 +1,4 @@
-// Package cli implements all Cobra subcommands for the AniPT CLI.
+// Package cli implements all Cobra subcommands for the AniBR CLI.
 package cli
 
 import (
@@ -16,8 +16,8 @@ import (
 	"github.com/angeloneri/anipt/internal/providers"
 	"github.com/angeloneri/anipt/internal/providers/animefire"
 	"github.com/angeloneri/anipt/internal/providers/goyabu"
-	"github.com/angeloneri/anipt/internal/providers/multi"
 	"github.com/angeloneri/anipt/internal/providers/mock"
+	"github.com/angeloneri/anipt/internal/providers/multi"
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/angeloneri/anipt/internal/tui"
@@ -41,18 +41,18 @@ var container *appContainer
 // NewRootCmd builds and returns the root Cobra command.
 func NewRootCmd() *cobra.Command {
 	rootCmd := &cobra.Command{
-		Use:   "anipt",
-		Short: "AniPT — Anime CLI Brasileiro",
+		Use:   "anibr",
+		Short: "AniBR — Anime CLI Brasileiro",
 		Long: `
   ╔═══════════════════════════════════╗
-  ║           AniPT  v1.0             ║
+  ║           AniBR  v1.0             ║
   ║    Anime CLI em Português (BR)    ║
   ╚═══════════════════════════════════╝
 
-  AniPT é um cliente de terminal para assistir animes em
+  AniBR é um cliente de terminal para assistir animes em
   português (dublado e legendado) direto no seu terminal.
   
-  Repositório: https://github.com/angeloneri/anipt`,
+  Repositório: https://github.com/AngeLZinS2/AniPT`,
 		// Initialize all dependencies before any subcommand runs.
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 			return initContainer()

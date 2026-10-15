@@ -1,5 +1,5 @@
 // Package player defines the Player interface and stream options for launching
-// external media players (mpv, VLC) from AniPT.
+// external media players (mpv, VLC) from AniBR.
 package player
 
 // StreamOptions contains all the parameters needed to launch a media player.
