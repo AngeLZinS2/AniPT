@@ -89,10 +89,10 @@ flowchart LR
 
 ## Instalar e experimentar
 
-Versão desktop disponível: **0.3.3**, para **Windows 64 bits**.
+Versão desktop disponível: **0.3.4**, para **Windows 64 bits**.
 
-- **[Instalador Windows](http://173.212.251.120:8085/downloads/AniBR-0.3.3-Setup.exe)** — instalação assistida.
-- **[Versão portátil ZIP](http://173.212.251.120:8085/downloads/AniBR-0.3.3-Portable.zip)** — extraia a pasta e execute `AniBR.exe`.
+- **[Instalador Windows](http://173.212.251.120:8085/downloads/AniBR-0.3.4-Setup.exe)** — instalação assistida.
+- **[Versão portátil ZIP](http://173.212.251.120:8085/downloads/AniBR-0.3.4-Portable.zip)** — extraia a pasta e execute `AniBR.exe`.
 - **[SHA-256 dos arquivos](http://173.212.251.120:8085/downloads/SHA256SUMS.txt)** — conferência dos downloads.
 
 Ambas as versões utilizam WebView2 e os dados locais do perfil do Windows. O portátil dispensa a instalação do aplicativo, mas seus dados não ficam isolados dentro do ZIP.
@@ -124,7 +124,7 @@ npm run build
 
 Os instaladores são gerados em `src-tauri/target/release/bundle/` e o executável em `src-tauri/target/release/anipt.exe`. O nome visível é AniBR; o identificador `br.com.anipt.desktop` preserva a continuidade dos dados locais.
 
-A versão desktop 0.3.3 foi validada com **47 testes de frontend**, **33 testes Rust aprovados** e compilação dos pacotes Windows. Quatro testes Rust que dependem de rede são opcionais e ficam ignorados na execução padrão. A disponibilidade dos serviços externos continua dependendo da rede e das fontes.
+A versão desktop 0.3.4 foi validada com **49 testes de frontend**, **35 testes Rust aprovados** e compilação dos pacotes Windows. Cinco testes Rust que dependem de rede são opcionais e ficam ignorados na execução padrão. A disponibilidade dos serviços externos continua dependendo da rede e das fontes.
 
 ## Usar a CLI AniBR
 

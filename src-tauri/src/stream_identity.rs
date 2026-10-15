@@ -124,6 +124,89 @@ pub fn filter_mapped_streams(
     before - streams.len()
 }
 
+/// Nyaa can return a whole collection instead of a single SxxExx video.
+/// Retain such candidates for explicit file inspection, never autoplay its fileIdx.
+/// Known conflicting parts still cannot masquerade as the requested episode.
+pub fn filter_nyaa_streams(
+    streams: &mut Vec<StreamSource>,
+    mapped: &crate::episode_ids::ImdbEpisode,
+    identity: Option<&SeasonIdentity>,
+) -> usize {
+    static COORDINATES: OnceLock<Regex> = OnceLock::new();
+    static COLLECTION: OnceLock<Regex> = OnceLock::new();
+    static SEASON: OnceLock<Regex> = OnceLock::new();
+    let coordinates = COORDINATES
+        .get_or_init(|| Regex::new(r"(?i)\b(?:s|t)0*(\d+)\s*[._-]?\s*(?:e|ep)0*(\d+)\b").unwrap());
+    let collection = COLLECTION.get_or_init(|| {
+        Regex::new(r"(?i)\bs0*\d+\s*[-+]\s*(?:s)?0*\d+\b|complete collection").unwrap()
+    });
+    let season =
+        SEASON.get_or_init(|| Regex::new(r"(?i)\b(?:season|temporada)\s*0*(\d+)\b").unwrap());
+    let before = streams.len();
+    streams.retain_mut(|stream| {
+        if stream.format != "Torrent" {
+            return false;
+        }
+        let is_collection = collection.is_match(&stream.quality);
+        let coords = coordinates
+            .captures_iter(&stream.quality)
+            .map(|parts| {
+                (
+                    parts[1].parse::<u64>().unwrap_or(0),
+                    parts[2].parse::<u64>().unwrap_or(0),
+                )
+            })
+            .collect::<Vec<_>>();
+        if !is_collection {
+            let label = format!(" {} ", normalized_title(&stream.quality));
+            // These parts appeared in the live T1 response with a spurious '- 1x1'
+            // suffix appended by the addon. That suffix is not episode identity.
+            for marker in [
+                "final season",
+                "oad",
+                "ova",
+                "movie",
+                "movies",
+                "special",
+                "specials",
+            ] {
+                let requested_has_marker = identity
+                    .map(|id| {
+                        id.requested
+                            .iter()
+                            .any(|title| format!(" {title} ").contains(&format!(" {marker} ")))
+                    })
+                    .unwrap_or(false);
+                if label.contains(&format!(" {marker} ")) && !requested_has_marker {
+                    return false;
+                }
+            }
+            if !coords.is_empty() {
+                return coords
+                    .iter()
+                    .all(|pair| *pair == (mapped.season, mapped.episode));
+            }
+            if let Some(identity) = identity {
+                if !identity.accepts(stream) {
+                    return false;
+                }
+            }
+            if season
+                .captures_iter(&stream.quality)
+                .any(|parts| parts[1].parse::<u64>() != Ok(mapped.season))
+            {
+                return false;
+            }
+        }
+        // A batch/fileIdx is only a candidate. The user's file choice must be
+        // explicit even when the addon says fileIdx=0 or a previous choice exists.
+        stream.torrent_file_index = None;
+        stream.requires_file_selection = true;
+        true
+    });
+    before - streams.len()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -150,6 +233,7 @@ mod tests {
             is_hls: false,
             source: "Fixture".into(),
             torrent_file_index: None,
+            requires_file_selection: false,
         }
     }
 
@@ -221,5 +305,72 @@ mod tests {
         ];
         assert_eq!(filter_mapped_streams(&mut streams, &mapped), 3);
         assert_eq!(streams[0].quality, "Black Clover · T02 EP01 (Ep. 171)");
+    }
+    #[test]
+    fn nyaa_aot_batches_remain_candidates_but_final_season_and_oad_do_not() {
+        let id = SeasonIdentity::from_media(
+            &json!({"title":{"english":"Attack on Titan","romaji":"Shingeki no Kyojin"}}),
+        )
+        .unwrap();
+        let mapped = crate::episode_ids::ImdbEpisode {
+            series_id: "tt2560140".into(),
+            season: 1,
+            episode: 1,
+            canonical_season: 1,
+            canonical_episode: 1,
+        };
+        let labels=[
+            "[Anime Time] Attack On Titan (Complete Collection) (S01-S04+OVA+Movies) [Batch] - Batch idx=1",
+            "[Erai-raws] Shingeki no Kyojin - 01 ~ 25 [1080p][BATCH] - Batch idx=1",
+            "[Erai-raws] Shingeki no Kyojin - 01 ~ 25 [1080p] - 1x1",
+            "[Erai-raws] Shingeki no Kyojin - The Final Season Part 2 - 01 ~ 12 - 1x1",
+            "[Erai-raws] Shingeki no Kyojin - The Final Season - 01 ~ 16 - 1x1",
+            "[Erai-raws] Shingeki no Kyojin - 01 ~ 25 [720p] - 1x1",
+            "[Erai-raws] Shingeki no Kyojin OAD - 01 ~ 08 [Batch] - Batch idx=1",
+            "[Erai-raws] Shingeki no Kyojin - The Final Season Part 2 - 01 ~ 12 [720p] - 1x1",
+            "[Anime Time] Attack on Titan S01+02+03+04 (Part 1) +OVA [Batch] - Batch idx=1",
+        ];
+        let mut items = labels
+            .iter()
+            .map(|label| {
+                let mut s = source(label);
+                s.format = "Torrent".into();
+                s.torrent_file_index = Some(0);
+                s
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(filter_nyaa_streams(&mut items, &mapped, Some(&id)), 4);
+        assert_eq!(items.len(), 5);
+        assert!(items
+            .iter()
+            .all(|s| s.requires_file_selection && s.torrent_file_index.is_none()));
+        assert!(items
+            .iter()
+            .all(|s| !s.quality.contains("Final Season") && !s.quality.contains(" Kyojin OAD")));
+    }
+    #[test]
+    fn nyaa_explicit_wrong_episode_is_not_saved_by_an_appended_request_label() {
+        let mapped = crate::episode_ids::ImdbEpisode {
+            series_id: "tt7441658".into(),
+            season: 2,
+            episode: 1,
+            canonical_season: 1,
+            canonical_episode: 1,
+        };
+        let mut items = [
+            "Black Clover S01E01 - 2x1",
+            "Black Clover S02E02 - 2x1",
+            "Black Clover S02E01 - 2x1",
+        ]
+        .iter()
+        .map(|s| {
+            let mut s = source(s);
+            s.format = "Torrent".into();
+            s
+        })
+        .collect::<Vec<_>>();
+        assert_eq!(filter_nyaa_streams(&mut items, &mapped, None), 2);
+        assert_eq!(items.len(), 1);
+        assert!(!items[0].requires_file_selection);
     }
 }

@@ -173,9 +173,27 @@ mod availability_tests {
             let query=source_episode_query(&base,"anime","kitsu:50024:1",&mapping,identity.as_ref()).await.unwrap();
             assert_eq!(query.episode_id,"tt7441658:2:1");assert_eq!(query.kind,"series");
             let mut current=streams(&query.episode_id,"legendado",&format!("addon:{base}|{}",query.kind)).await.unwrap();
-            let before=current.len();let rejected=crate::stream_identity::filter_mapped_streams(&mut current,query.mapped.as_ref().unwrap());
+            let before=current.len();let rejected=crate::stream_identity::filter_nyaa_streams(&mut current,query.mapped.as_ref().unwrap(),identity.as_ref());
             assert!(!current.is_empty());assert!(current.iter().all(|s|s.format=="Torrent"&&s.url.starts_with("magnet:?xt=urn:btih:")));
             println!("Nyaa T02 EP01: {before} torrents recebidos, {rejected} sem coordenadas confirmadas descartados; {} preservados. Reprodução P2P não testada.",current.len());
+        });
+    }
+    #[test]
+    #[ignore = "live Nyaa source; set ANIBR_TEST_NYAA and run explicitly"]
+    fn live_nyaa_aot_first_episode_retains_batches_for_file_confirmation() {
+        tauri::async_runtime::block_on(async {
+            let base=std::env::var("ANIBR_TEST_NYAA").expect("Defina ANIBR_TEST_NYAA");
+            validate_episode_identity("anilist:16498","kitsu:7442:1").await.unwrap();
+            let identity=stream_season_identity("anilist:16498").await.unwrap();
+            let mapping=mapped_imdb_episode("kitsu:7442:1").await;
+            let query=source_episode_query(&base,"anime","kitsu:7442:1",&mapping,identity.as_ref()).await.unwrap();
+            assert_eq!(query.episode_id,"tt2560140:1:1");
+            let mut current=streams(&query.episode_id,"legendado",&format!("addon:{base}|{}",query.kind)).await.unwrap();
+            let before=current.len();let rejected=crate::stream_identity::filter_nyaa_streams(&mut current,query.mapped.as_ref().unwrap(),identity.as_ref());
+            assert!(!current.is_empty());assert!(current.iter().any(|s|s.requires_file_selection));
+            assert!(current.iter().all(|s|!s.requires_file_selection||s.torrent_file_index.is_none()));
+            assert!(current.iter().all(|s|!s.quality.contains("Final Season")&&!s.quality.contains("Kyojin OAD")));
+            println!("Attack on Titan T1 EP1: {before} opções, {rejected} conflitantes descartadas, {} pacotes para confirmação do arquivo. Nenhuma reprodução P2P afirmada.",current.len());
         });
     }
     #[test]
@@ -631,6 +649,9 @@ fn mapped_id(mappings:&Value,site:&str)->Option<String>{
         attrs.get("externalId").and_then(|value|value.as_str().map(str::to_string).or_else(||value.as_i64().map(|id|id.to_string())))
     })
 }
+pub fn uses_nyaa_batches(base:&str)->bool {
+    reqwest::Url::parse(base).ok().and_then(|url|url.host_str().map(str::to_owned)).as_deref()==Some("stremio-br-anime.onrender.com")
+}
 pub fn uses_explicit_season_ids(base:&str)->bool {
     reqwest::Url::parse(base).ok().and_then(|url|url.host_str().map(str::to_owned)).as_deref() .map(|host|matches!(host,"fenixflix.fenixhub.online"|"stremio-br-anime.onrender.com")).unwrap_or(false)
 }
@@ -751,7 +772,7 @@ pub async fn streams(
             let hls=!is_torrent&&parsed.path().to_lowercase().ends_with(".m3u8");
             let format=if is_torrent {"Torrent"} else if hls {"HLS"} else if parsed.path().to_lowercase().ends_with(".mp4") {"MP4"} else {"Vídeo direto"};
             let host=reqwest::Url::parse(base).ok().and_then(|u|u.host_str().map(str::to_owned)).unwrap_or_default();
-            Some(StreamSource{url:url.into(),quality:description,language:audio.into(),format:format.into(),is_hls:hls,torrent_file_index:s.get("fileIdx").and_then(Value::as_u64).map(|index|index as usize),source:if name.is_empty(){host}else{format!("{name} · {host}")}})
+            Some(StreamSource{url:url.into(),quality:description,language:audio.into(),format:format.into(),is_hls:hls,requires_file_selection:false,torrent_file_index:s.get("fileIdx").and_then(Value::as_u64).map(|index|index as usize),source:if name.is_empty(){host}else{format!("{name} · {host}")}})
         }).collect::<Vec<_>>();
         if uses_explicit_season_ids(base) {
             for batch in out.chunks_mut(3) {
@@ -793,6 +814,7 @@ pub async fn streams(
             is_hls: hls,
             source: provider.into(),
             torrent_file_index: None,
+            requires_file_selection: false,
         });
     }
     if out.is_empty() {

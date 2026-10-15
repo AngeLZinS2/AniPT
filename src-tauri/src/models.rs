@@ -78,6 +78,8 @@ pub struct StreamSource {
     pub source: String,
     #[serde(default)]
     pub torrent_file_index: Option<usize>,
+    #[serde(default)]
+    pub requires_file_selection: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
