@@ -1,5 +1,6 @@
 mod config;
 mod database;
+mod episode_ids;
 mod models;
 mod player;
 mod provider;
@@ -90,20 +91,19 @@ async fn get_streams(
     if let Some(spec)=provider.strip_prefix("addon:"){let base=spec.rsplit_once('|').map(|(base,_)|base).unwrap_or(spec);if !addons.iter().any(|item|item==base){addons.push(base.into());}}
     addons.sort_by_key(|url| if url.contains("animesub.duckdns.org") { 0 } else { 1 });
     addons.dedup();
+    let mapped_episode=if addons.iter().any(|base|provider::uses_explicit_season_ids(base)) {provider::mapped_imdb_episode(&episode_id).await} else {Ok(None)};
     let mut resolution=StreamResolution{streams:Vec::new(),sources:Vec::new()};
     if !provider.starts_with("addon:") {
         if let Ok(streams)=provider::streams(&episode_id,&language,&provider).await {resolution.streams.extend(streams);}
     }
     for batch in addons.chunks(4) {
         let tasks=batch.iter().map(|base|{
-            let base=base.clone();let preferred=kind.to_string();let episode=episode_id.clone();let language=language.clone();let identity=identity.clone();
+            let base=base.clone();let preferred=kind.to_string();let episode=episode_id.clone();let language=language.clone();let identity=identity.clone();let mapped_episode=mapped_episode.clone();
             tauri::async_runtime::spawn(async move {
                 let host=reqwest::Url::parse(&base).ok().and_then(|url|url.host_str().map(str::to_string)).unwrap_or("Fonte externa".into());
-                let support=provider::episode_support(&base,&preferred,&episode).await;
-                let resource_kind=if matches!(support,Ok(true)) {Some(preferred)} else if preferred=="anime"&&matches!(provider::episode_support(&base,"series",&episode).await,Ok(true)) {Some("series".into())} else {None};
-                let Some(resource_kind)=resource_kind else {return (Vec::new(),SourceDiagnostic{source:host,status:support.err().unwrap_or("Tipo de conteúdo não aceito por esta fonte".into())});};
-                match provider::streams(&episode,&language,&format!("addon:{base}|{resource_kind}")).await {
-                    Ok(mut streams)=>{let rejected=stream_identity::filter_streams(&mut streams,identity.as_ref());let torrents=streams.iter().filter(|s|s.format=="Torrent").count();let mut status=if streams.is_empty(){"Respondeu sem opções compatíveis para este episódio".into()}else{format!("{} vídeos diretos · {} torrents",streams.len()-torrents,torrents)};if rejected>0{status.push_str(&format!(" · {rejected} opções de outra temporada descartadas"));}(streams,SourceDiagnostic{source:host,status})},
+                let query=match provider::source_episode_query(&base,&preferred,&episode,&mapped_episode,identity.as_ref()).await {Ok(query)=>query,Err(status)=>return (Vec::new(),SourceDiagnostic{source:host,status})};
+                match provider::streams(&query.episode_id,&language,&format!("addon:{base}|{}",query.kind)).await {
+                    Ok(mut streams)=>{let rejected=if let Some(mapped)=query.mapped.as_ref(){stream_identity::filter_mapped_streams(&mut streams,mapped)}else{stream_identity::filter_streams(&mut streams,identity.as_ref())};let torrents=streams.iter().filter(|s|s.format=="Torrent").count();let mut status=if streams.is_empty(){"Respondeu sem opções compatíveis para este episódio".into()}else{format!("{} vídeos diretos · {} torrents",streams.len()-torrents,torrents)};if rejected>0{status.push_str(&format!(" · {rejected} opções de outra temporada descartadas"));}(streams,SourceDiagnostic{source:host,status})},
                     Err(error)=>{let status=if error.contains("aviso de bloqueio"){"Bloqueada por limite de requisições; vídeo de aviso descartado".into()}else{error};(Vec::new(),SourceDiagnostic{source:host,status})}
                 }
             })
@@ -196,7 +196,10 @@ async fn inspect_addon(url:String,s:State<'_,AppState>)->Result<serde_json::Valu
     if !s.config.read().map_err(|_|"Configuração indisponível")?.addons.contains(&url){return Err("Fonte não instalada".into());}
     let base=url.trim_end_matches('/').trim_end_matches("/manifest.json");
     let manifest:serde_json::Value=reqwest::Client::builder().timeout(std::time::Duration::from_secs(15)).build().map_err(|_|"Cliente indisponível")?.get(format!("{base}/manifest.json")).send().await.map_err(|_|"A fonte não respondeu")?.error_for_status().map_err(|_|"A fonte retornou um erro HTTP")?.json().await.map_err(|_|"Manifesto inválido")?;
-    Ok(addon_summary(&manifest))
+    let mut summary=addon_summary(&manifest);
+    if let Err(status)=provider::configured_manifest(&manifest) {summary["catalog_status"]=serde_json::Value::String(status);}
+    if let Some(status)=provider::native_catalog_status(base,&manifest).await {summary["catalog_status"]=serde_json::Value::String(status);}
+    Ok(summary)
 }
 #[tauri::command]
 fn get_progress(anime_id: String, provider: String, season: i64, episode: f64, s: State<AppState>) -> Result<Option<HistoryEntry>, String> {
@@ -225,6 +228,7 @@ async fn add_addon(url: String, s: State<'_, AppState>) -> Result<serde_json::Va
     let manifest_url=format!("{base}/manifest.json");
     let manifest:serde_json::Value=reqwest::Client::new().get(manifest_url).send().await.map_err(|e|e.to_string())?.error_for_status().map_err(|e|e.to_string())?.json().await.map_err(|e|e.to_string())?;
     if manifest.get("id").and_then(|v|v.as_str()).is_none() || manifest.get("name").and_then(|v|v.as_str()).is_none() { return Err("Manifesto incompatível: id e name são obrigatórios".into()); }
+    provider::configured_manifest(&manifest)?;
     let mut cfg=s.config.write().map_err(|_|"config lock poisoned".to_string())?;
     if !cfg.addons.contains(&base) {
         let is_stream_only = manifest.get("catalogs").and_then(|v|v.as_array()).map(|x|x.is_empty()).unwrap_or(false)

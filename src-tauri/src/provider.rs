@@ -7,6 +7,10 @@ use std::sync::{OnceLock,Mutex};
 use std::collections::HashMap;
 
 const UA: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AniPT/0.2";
+fn addon_timeout(base:&str)->std::time::Duration {
+    let slow=reqwest::Url::parse(base).ok().and_then(|u|u.host_str().map(str::to_owned)).as_deref()==Some("streamio-hianime.onrender.com");
+    std::time::Duration::from_secs(if slow {70}else{15})
+}
 fn media_bytes(bytes: &[u8], content_type: &str) -> bool {
     let text = String::from_utf8_lossy(bytes).trim_start().to_ascii_lowercase();
     if text.starts_with('<') || text.starts_with('{') { return false; }
@@ -35,6 +39,17 @@ pub async fn video_available(url: &str) -> bool {
         } else { return media_bytes(&bytes,&content_type); }
     }
     false
+}
+
+// Providers can return HLS behind an extensionless redirect URL. A bounded GET
+// is necessary here: several of these CDNs reject HEAD with 405.
+async fn hls_response(url:&str)->bool {
+    let Ok(http)=client() else {return false;};
+    let Ok(mut response)=http.get(url).timeout(std::time::Duration::from_secs(4)).header("Range","bytes=0-1023").send().await else {return false;};
+    if !response.status().is_success(){return false;}
+    let mime=response.headers().get("content-type").and_then(|v|v.to_str().ok()).unwrap_or("").split(';').next().unwrap_or("").trim().to_ascii_lowercase();
+    if matches!(mime.as_str(),"application/vnd.apple.mpegurl"|"application/x-mpegurl"|"audio/mpegurl"|"audio/x-mpegurl"){return true;}
+    match response.chunk().await {Ok(Some(chunk))=>String::from_utf8_lossy(&chunk[..chunk.len().min(1024)]).trim_start().starts_with("#EXTM3U"),_=>false}
 }
 
 #[cfg(test)]
@@ -116,22 +131,95 @@ mod availability_tests {
     }
     #[test]
     #[ignore = "live source; set ANIBR_TEST_ADDON and run explicitly"]
-    fn live_black_clover_sequel_excludes_prequel_video_links() {
+    fn live_black_clover_sequel_uses_verified_series_coordinates() {
         tauri::async_runtime::block_on(async {
             let base=std::env::var("ANIBR_TEST_ADDON").expect("Defina ANIBR_TEST_ADDON para testar uma fonte instalada");
-            let provider=format!("addon:{base}|anime");
             validate_episode_identity("anilist:195604","kitsu:50024:1").await.unwrap();
             let identity=stream_season_identity("anilist:195604").await.unwrap();
-            let previous=streams("kitsu:13209:1","dublado",&provider).await.unwrap();
-            let mut current=streams("kitsu:50024:1","dublado",&provider).await.unwrap();
+            let mapping=mapped_imdb_episode("kitsu:50024:1").await;
+            let query=source_episode_query(&base,"anime","kitsu:50024:1",&mapping,identity.as_ref()).await.unwrap();
+            assert_eq!(query.episode_id,"tt7441658:2:1");
+            assert_eq!(query.kind,"series");
+            let mut current=streams(&query.episode_id,"legendado",&format!("addon:{base}|{}",query.kind)).await.unwrap();
             let before=current.len();
-            let rejected=crate::stream_identity::filter_streams(&mut current,identity.as_ref());
-            let key=|stream:&StreamSource|reqwest::Url::parse(&stream.url).ok().map(|url|format!("{}{}",url.origin().ascii_serialization(),url.path()));
-            let previous_keys=previous.iter().filter_map(key).collect::<Vec<_>>();
-            assert!(!current.is_empty(),"A fonte não forneceu opções corretas da segunda temporada");
-            assert!(current.iter().filter_map(key).all(|key|!previous_keys.contains(&key)),"A fonte ainda mistura os mesmos links da primeira temporada");
-            println!("Segunda temporada: {before} opções recebidas, {rejected} conflitantes descartadas, {} preservadas",current.len());
+            let rejected=crate::stream_identity::filter_mapped_streams(&mut current,query.mapped.as_ref().unwrap());
+            assert!(!current.is_empty(),"A fonte não forneceu opções com temporada e episódio confirmados");
+            assert!(current[0].is_hls,"A playlist sem extensão deve chegar ao player como HLS");
+            assert!(video_available(&current[0].url).await,"A opção resolvida não retornou mídia");
+            // Optional local evidence for a manual decoded-frame check; never log URLs.
+            if let Ok(path)=std::env::var("ANIBR_TEST_MEDIA_OUTPUT") {
+                std::fs::write(path,serde_json::to_vec(&current).unwrap()).unwrap();
+            }
+            println!("Consulta confirmada T02 EP01: {before} recebidas, {rejected} descartadas, {} preservadas; mídia acessível",current.len());
         });
+    }
+    #[test]
+    fn unconfigured_addons_are_reported_before_being_registered_or_queried() {
+        let manifest=serde_json::json!({"resources":[],"behaviorHints":{"configurationRequired":true}});
+        assert!(configured_manifest(&manifest).unwrap_err().contains("URL completa"));
+        assert!(manifest_episode_support(&manifest,"series","tt7441658:2:1").unwrap_err().contains("configuração"));
+        assert!(configured_manifest(&serde_json::json!({"resources":["stream"]})).is_ok());
+        assert!(uses_explicit_season_ids("https://stremio-br-anime.onrender.com/private-config"));
+        assert!(!uses_explicit_season_ids("https://stremio-br-anime.onrender.com.example.test/private-config"));
+    }
+    #[test]
+    #[ignore = "live Nyaa source; set ANIBR_TEST_NYAA and run explicitly"]
+    fn live_nyaa_uses_verified_sequel_episode_and_returns_torrents() {
+        tauri::async_runtime::block_on(async {
+            let base=std::env::var("ANIBR_TEST_NYAA").expect("Defina ANIBR_TEST_NYAA com a fonte configurada");
+            validate_episode_identity("anilist:195604","kitsu:50024:1").await.unwrap();
+            let identity=stream_season_identity("anilist:195604").await.unwrap();
+            let mapping=mapped_imdb_episode("kitsu:50024:1").await;
+            let query=source_episode_query(&base,"anime","kitsu:50024:1",&mapping,identity.as_ref()).await.unwrap();
+            assert_eq!(query.episode_id,"tt7441658:2:1");assert_eq!(query.kind,"series");
+            let mut current=streams(&query.episode_id,"legendado",&format!("addon:{base}|{}",query.kind)).await.unwrap();
+            let before=current.len();let rejected=crate::stream_identity::filter_mapped_streams(&mut current,query.mapped.as_ref().unwrap());
+            assert!(!current.is_empty());assert!(current.iter().all(|s|s.format=="Torrent"&&s.url.starts_with("magnet:?xt=urn:btih:")));
+            println!("Nyaa T02 EP01: {before} torrents recebidos, {rejected} sem coordenadas confirmadas descartados; {} preservados. Reprodução P2P não testada.",current.len());
+        });
+    }
+    #[test]
+    fn hianime_waits_for_documented_delay_without_changing_other_addons() {
+        assert_eq!(addon_timeout("https://streamio-hianime.onrender.com"),std::time::Duration::from_secs(70));
+        assert_eq!(addon_timeout("https://streamio-hianime.onrender.com.example.test"),std::time::Duration::from_secs(15));
+        assert_eq!(addon_timeout("https://example.test"),std::time::Duration::from_secs(15));
+    }
+    #[test]
+    fn native_catalog_health_distinguishes_empty_invalid_and_nonempty_without_claiming_playback() {
+        assert!(native_catalog_report(&serde_json::json!({"metas":[]})).contains("respondeu vazio"));
+        assert!(native_catalog_report(&serde_json::json!({"error":"offline"})).contains("inválida"));
+        assert!(native_catalog_report(&serde_json::json!({"metas":[{"id":"hianime:fixture"}]})).contains("não comprova reprodução"));
+    }
+    #[test]
+    fn sequel_conversion_never_falls_back_on_mapping_failure() {
+        assert!(uses_explicit_season_ids("https://fenixflix.fenixhub.online/config"));
+        assert!(!uses_explicit_season_ids("https://fenixflix.fenixhub.online.example.test/config"));
+        let identity=crate::stream_identity::SeasonIdentity::from_media(&serde_json::json!({"title":{"english":"Sequel"},"relations":{"edges":[{"relationType":"PREQUEL"}]}})).unwrap();
+        tauri::async_runtime::block_on(async {
+            for mapping in [Ok(None),Err("offline".into())] {
+                // No network needed: reject before manifest/stream lookup.
+                let result=source_episode_query("https://fenixflix.fenixhub.online","anime","kitsu:50024:1",&mapping,Some(&identity)).await;
+                assert!(result.err().unwrap().contains("ambígua descartada"));
+            }
+        });
+    }
+    #[test]
+    fn extensionless_hls_uses_get_and_recognizes_the_body_without_a_mime() {
+        use std::{io::{Read,Write},net::TcpListener};
+        let listener=TcpListener::bind("127.0.0.1:0").unwrap();
+        let base=format!("http://{}",listener.local_addr().unwrap());
+        let server=std::thread::spawn(move||{
+            for i in 0..3 {
+                let (mut socket,_)=listener.accept().unwrap();
+                socket.set_read_timeout(Some(std::time::Duration::from_secs(5))).unwrap();
+                let mut request=[0;4096];let n=socket.read(&mut request).unwrap();
+                assert!(String::from_utf8_lossy(&request[..n]).starts_with("GET /play"));
+                let (mime,body)=match i {0=>("application/vnd.apple.mpegurl","#EXTM3U\nsegment.ts"),1=>("application/octet-stream","#EXTM3U\nsegment.ts"),_=>("text/html","<!doctype html>offline")};
+                write!(socket,"HTTP/1.1 200 OK\r\nContent-Type: {mime}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",body.len()).unwrap();
+            }
+        });
+        tauri::async_runtime::block_on(async {assert!(hls_response(&format!("{base}/play")).await);assert!(hls_response(&format!("{base}/play")).await);assert!(!hls_response(&format!("{base}/play")).await);});
+        server.join().unwrap();
     }
     #[test]
     fn rejects_error_documents_even_with_video_content_type() {
@@ -284,7 +372,7 @@ async fn search_addon(base: &str, query: &str) -> Result<Vec<Anime>, String> {
         let kind=catalog.get("type").and_then(Value::as_str).unwrap_or("series");
         let id=catalog.get("id").and_then(Value::as_str).unwrap_or("top");
         let url=if query.is_empty(){format!("{root}/catalog/{kind}/{id}.json")}else{format!("{root}/catalog/{kind}/{id}/search={}.json",urlencoding::encode(query))};
-        let Ok(response)=client()?.get(url).send().await else {continue}; let Ok(response)=response.error_for_status() else {continue}; let Ok(json)=response.json::<Value>().await else {continue};
+        let Ok(response)=client()?.get(url).timeout(addon_timeout(base)).send().await else {continue}; let Ok(response)=response.error_for_status() else {continue}; let Ok(json)=response.json::<Value>().await else {continue};
         for m in json.get("metas").and_then(Value::as_array).into_iter().flatten() { out.push(Anime{id:m.get("id").and_then(Value::as_str).unwrap_or_default().into(),title:m.get("name").and_then(Value::as_str).unwrap_or("Sem título").into(),title_ptbr:String::new(),cover_url:m.get("poster").and_then(Value::as_str).unwrap_or_default().into(),banner_url:m.get("background").and_then(Value::as_str).unwrap_or_default().into(),synopsis:m.get("description").and_then(Value::as_str).unwrap_or_default().into(),genres:m.get("genres").and_then(Value::as_array).map(|a|a.iter().filter_map(Value::as_str).map(str::to_string).collect()).unwrap_or_default(),status:String::new(),total_episodes:0,year:m.get("releaseInfo").and_then(Value::as_str).and_then(|s|s.get(0..4)).and_then(|s|s.parse().ok()).unwrap_or(0),provider:format!("addon:{root}|{kind}"),available_languages:vec![],latest_episode:0.0,aired_at:0,confirmed_release:false,rating:0.0}); }
     }
     out.retain(|a|!a.id.is_empty()); Ok(out)
@@ -394,6 +482,36 @@ async fn fetch(url: &str) -> Result<String, String> {
         .await
         .map_err(|e| e.to_string())
 }
+/// Native-ID addons cannot be tested by sending an unrelated Kitsu ID.
+/// Probe a manifest-declared catalog and report its state separately from playback.
+pub async fn native_catalog_status(base:&str,manifest:&Value)->Option<String> {
+    if !manifest.get("idPrefixes").and_then(Value::as_array).map(|p|p.iter().any(|v|v.as_str()==Some("hianime:"))).unwrap_or(false){return None;}
+    let catalog=manifest.get("catalogs")?.as_array()?.iter().find(|c|!c.get("extra").and_then(Value::as_array).into_iter().flatten().any(|e|e.get("isRequired").and_then(Value::as_bool)==Some(true)))?;
+    let kind=catalog.get("type")?.as_str()?;let id=catalog.get("id")?.as_str()?;
+    let url=format!("{}/catalog/{}/{}.json",base.trim_end_matches('/'),urlencoding::encode(kind),urlencoding::encode(id));
+    let status=match client().ok()?.get(url).timeout(addon_timeout(base)).send().await {
+        Ok(response) if response.status().is_success()=>match response.json::<Value>().await {
+            Ok(value)=>native_catalog_report(&value),
+            Err(_)=>"O catálogo não retornou JSON válido; reprodução não confirmada.".into(),
+        },
+        _=>"Manifesto acessível, mas o catálogo não pôde ser consultado; reprodução não confirmada.".into(),
+    };
+    Some(status)
+}
+fn native_catalog_report(value:&Value)->String {
+    match value.get("metas").and_then(Value::as_array) {
+        Some(items) if items.is_empty()=>"O catálogo desta fonte respondeu vazio. Ela exige IDs HiAnime; não há conversão de temporada/episódio confirmada para o catálogo AniList. Reprodução indisponível por esta fonte.".into(),
+        Some(items)=>format!("Catálogo respondeu com {} obras. Esta fonte exige IDs HiAnime; a conversão de temporada/episódio do AniList ainda não está confirmada. A resposta do catálogo não comprova reprodução.",items.len()),
+        None=>"Resposta de catálogo inválida: falta a lista metas; reprodução não confirmada.".into(),
+    }
+}
+
+pub fn configured_manifest(manifest:&Value)->Result<(),String> {
+    if manifest.pointer("/behaviorHints/configurationRequired").and_then(Value::as_bool)==Some(true) {
+        return Err("Esta fonte precisa de configuração. Abra a página de configuração do addon e copie a URL completa de instalação gerada, incluindo o trecho antes de /manifest.json.".into());
+    }
+    Ok(())
+}
 pub async fn episode_support(base: &str, kind: &str, episode_id: &str) -> Result<bool,String> {
     // An opaque scraper ID is meaningful only to its original provider.
     if !episode_id.contains(':') { return Err("ID de episódio não verificável".into()); }
@@ -411,6 +529,7 @@ pub async fn episode_support(base: &str, kind: &str, episode_id: &str) -> Result
     manifest_episode_support(&manifest,kind,episode_id)
 }
 fn manifest_episode_support(manifest:&Value,kind:&str,episode_id:&str)->Result<bool,String>{
+    configured_manifest(manifest)?;
     let resources=manifest.get("resources").and_then(Value::as_array).ok_or("Manifesto sem recursos")?;
     let is_stream=|resource:&Value|resource.as_str()==Some("stream")||resource.get("name").and_then(Value::as_str)==Some("stream");
     if !resources.iter().any(is_stream){return Err("Somente catálogo/metadados; esta fonte não fornece vídeos".into());}
@@ -441,7 +560,7 @@ pub async fn episodes(anime_id: &str, season: i64, provider: &str) -> Result<Vec
     if let Some(spec)=provider.strip_prefix("addon:") {
         let (base,kind)=spec.rsplit_once('|').unwrap_or((spec,"series"));
         let url=format!("{}/meta/{}/{}.json",base.trim_end_matches('/'),kind,urlencoding::encode(anime_id));
-        let response=client()?.get(url).send().await.map_err(|_|"Falha de rede ou timeout ao consultar metadados do anime")?;
+        let response=client()?.get(url).timeout(addon_timeout(base)).send().await.map_err(|_|"Falha de rede ou timeout ao consultar metadados do anime")?;
         if !response.status().is_success(){return Err(format!("Falha ao consultar metadados: HTTP {}",response.status().as_u16()));}
         let json:Value=response.json().await.map_err(|_|"Resposta de metadados inválida: não retornou JSON")?;
         let meta=json.get("meta").ok_or("A fonte não encontrou este identificador de anime")?;
@@ -512,6 +631,46 @@ fn mapped_id(mappings:&Value,site:&str)->Option<String>{
         attrs.get("externalId").and_then(|value|value.as_str().map(str::to_string).or_else(||value.as_i64().map(|id|id.to_string())))
     })
 }
+pub fn uses_explicit_season_ids(base:&str)->bool {
+    reqwest::Url::parse(base).ok().and_then(|url|url.host_str().map(str::to_owned)).as_deref() .map(|host|matches!(host,"fenixflix.fenixhub.online"|"stremio-br-anime.onrender.com")).unwrap_or(false)
+}
+pub async fn mapped_imdb_episode(episode_id:&str)->Result<Option<crate::episode_ids::ImdbEpisode>,String>{
+    let Some((canonical,_))=episode_id.rsplit_once(':') else {return Ok(None);};
+    let Some(kitsu)=canonical.strip_prefix("kitsu:") else {return Ok(None);};
+    if kitsu.is_empty()||!kitsu.chars().all(|c|c.is_ascii_digit()){return Err("Identificador Kitsu inválido para conversão de episódio".into());}
+    static METADATA:OnceLock<Mutex<HashMap<String,(std::time::Instant,Value)>>>=OnceLock::new();
+    let cache=METADATA.get_or_init(||Mutex::new(HashMap::new()));
+    let existing=cache.lock().ok().and_then(|items|items.get(canonical).filter(|(time,_)|time.elapsed().as_secs()<900).map(|(_,value)|value.clone()));
+    let meta=if let Some(meta)=existing{meta}else{
+        let response=client()?.get(format!("https://anime-kitsu.strem.fun/meta/anime/{}.json",urlencoding::encode(canonical))).send().await.map_err(|_|"Não foi possível consultar a conversão de temporada/episódio")?;
+        if !response.status().is_success(){return Err("Conversão de temporada/episódio indisponível".into());}
+        let data:Value=response.json().await.map_err(|_|"Resposta de conversão inválida")?;
+        let meta=data.get("meta").cloned().ok_or("A conversão não retornou metadados desta parte")?;
+        if let Ok(mut items)=cache.lock(){items.insert(canonical.into(),(std::time::Instant::now(),meta.clone()));}meta
+    };
+    crate::episode_ids::from_metadata(&meta,episode_id)
+}
+pub struct SourceEpisodeQuery {
+    pub episode_id:String,
+    pub kind:String,
+    pub mapped:Option<crate::episode_ids::ImdbEpisode>,
+}
+pub async fn source_episode_query(base:&str,preferred:&str,episode_id:&str,mapped:&Result<Option<crate::episode_ids::ImdbEpisode>,String>,identity:Option<&crate::stream_identity::SeasonIdentity>)->Result<SourceEpisodeQuery,String>{
+    let is_sequel=identity.map(|value|value.has_prequel).unwrap_or(false);
+    let changes_coordinates=mapped.as_ref().ok().and_then(|value|value.as_ref()).map(|value|value.changes_coordinates()).unwrap_or(false);
+    let imdb_only=reqwest::Url::parse(base).ok().and_then(|url|url.host_str().map(str::to_owned)).as_deref()==Some("stremio-br-anime.onrender.com");
+    let source=if imdb_only {"Nyaa Anime BR"} else {"Fenix"};
+    if uses_explicit_season_ids(base)&&(imdb_only||is_sequel||changes_coordinates){
+        let converted=mapped.as_ref().map_err(|_|format!("{source}: conversão de temporada indisponível; consulta ambígua descartada"))?.as_ref().ok_or_else(||format!("{source}: a temporada não tem conversão de episódio confirmada; consulta ambígua descartada"))?;
+        let id=converted.stream_id();
+        if !episode_support(base,"series",&id).await?{return Err(format!("{source} não aceita o identificador confirmado desta temporada"));}
+        return Ok(SourceEpisodeQuery{episode_id:id,kind:"series".into(),mapped:Some(converted.clone())});
+    }
+    let support=episode_support(base,preferred,episode_id).await;
+    if matches!(support,Ok(true)){return Ok(SourceEpisodeQuery{episode_id:episode_id.into(),kind:preferred.into(),mapped:None});}
+    if preferred=="anime"&&matches!(episode_support(base,"series",episode_id).await,Ok(true)){return Ok(SourceEpisodeQuery{episode_id:episode_id.into(),kind:"series".into(),mapped:None});}
+    Err(support.err().unwrap_or("Tipo de conteúdo não aceito por esta fonte".into()))
+}
 pub async fn stream_season_identity(anime_id:&str)->Result<Option<crate::stream_identity::SeasonIdentity>,String>{
     let Some(id)=anime_id.strip_prefix("anilist:") else {return Ok(None);};
     let id=id.parse::<i64>().map_err(|_|"ID AniList inválido")?;
@@ -566,13 +725,13 @@ pub async fn streams(
     if let Some(spec)=provider.strip_prefix("addon:") {
         let (base,kind)=spec.rsplit_once('|').unwrap_or((spec,"series"));
         let url=format!("{}/stream/{}/{}.json",base.trim_end_matches('/'),kind,urlencoding::encode(episode_id));
-        let response=client()?.get(url).send().await.map_err(|_|"Falha de rede ou timeout ao consultar os vídeos")?;
+        let response=client()?.get(url).timeout(addon_timeout(base)).send().await.map_err(|_|"Falha de rede ou timeout ao consultar os vídeos")?;
         if !response.status().is_success(){return Err(format!("Falha ao consultar vídeos: HTTP {}",response.status().as_u16()));}
         let json:Value=response.json().await.map_err(|_|"Resposta de vídeos inválida: não retornou JSON")?;
         let items=json.get("streams").and_then(Value::as_array).ok_or("Resposta inválida: falta a lista streams")?;
         if items.is_empty(){return Ok(Vec::new());}
         if json.get("streams").and_then(Value::as_array).map(|items|!items.is_empty()&&items.iter().all(|item|stream_notice(item))).unwrap_or(false){return Err("A fonte retornou um aviso de bloqueio, não um episódio".into());}
-        let out=json.get("streams").and_then(Value::as_array).into_iter().flatten().filter_map(|s| {
+        let mut out=json.get("streams").and_then(Value::as_array).into_iter().flatten().filter_map(|s| {
             if stream_notice(s){return None;}
             let torrent_hash=s.get("infoHash").and_then(Value::as_str).filter(|hash|hash.len()==40&&hash.chars().all(|c|c.is_ascii_hexdigit()));
             let raw=s.get("url").and_then(Value::as_str).unwrap_or("");
@@ -594,6 +753,15 @@ pub async fn streams(
             let host=reqwest::Url::parse(base).ok().and_then(|u|u.host_str().map(str::to_owned)).unwrap_or_default();
             Some(StreamSource{url:url.into(),quality:description,language:audio.into(),format:format.into(),is_hls:hls,torrent_file_index:s.get("fileIdx").and_then(Value::as_u64).map(|index|index as usize),source:if name.is_empty(){host}else{format!("{name} · {host}")}})
         }).collect::<Vec<_>>();
+        if uses_explicit_season_ids(base) {
+            for batch in out.chunks_mut(3) {
+                let probes=batch.iter().map(|stream|{let url=stream.url.clone();let probe=stream.format!="Torrent"&&!stream.is_hls;
+                    tauri::async_runtime::spawn(async move {probe&&hls_response(&url).await})}).collect::<Vec<_>>();
+                for (stream,probe) in batch.iter_mut().zip(probes) {
+                    if matches!(probe.await,Ok(true)){stream.is_hls=true;stream.format="HLS".into();}
+                }
+            }
+        }
         return if out.is_empty(){Err("Fonte respondeu, mas não ofereceu URL de vídeo ou torrent compatível".into())}else{Ok(out)}
     }
     let url = if provider == "goyabu" {

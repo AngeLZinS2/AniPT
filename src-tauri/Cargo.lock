@@ -62,7 +62,7 @@ dependencies = [
 
 [[package]]
 name = "anipt"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "axum",
  "dirs 6.0.0",

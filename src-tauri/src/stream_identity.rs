@@ -9,6 +9,7 @@ use std::sync::OnceLock;
 pub struct SeasonIdentity {
     requested: Vec<String>,
     other_parts: Vec<String>,
+    pub has_prequel: bool,
 }
 
 fn normalized_title(text: &str) -> String {
@@ -68,6 +69,12 @@ impl SeasonIdentity {
         Ok(Self {
             requested,
             other_parts,
+            has_prequel: media
+                .pointer("/relations/edges")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .any(|edge| edge.get("relationType").and_then(Value::as_str) == Some("PREQUEL")),
         })
     }
 
@@ -92,6 +99,28 @@ pub fn filter_streams(streams: &mut Vec<StreamSource>, identity: Option<&SeasonI
     if let Some(identity) = identity {
         streams.retain(|stream| identity.accepts(stream));
     }
+    before - streams.len()
+}
+
+/// In the Fenix IMDb path, a sequel can legitimately carry the base series
+/// title. Validate its explicit S/T + episode coordinates instead. A title
+/// saying "2nd Season" must never override a conflicting T01 EP01.
+pub fn filter_mapped_streams(
+    streams: &mut Vec<StreamSource>,
+    mapped: &crate::episode_ids::ImdbEpisode,
+) -> usize {
+    static COORDINATES: OnceLock<Regex> = OnceLock::new();
+    let coordinates=COORDINATES.get_or_init(||Regex::new(r"(?i)\b(?:season|temporada|s|t)\s*0*(\d+)\s*[._-]?\s*(?:episode|epis[oó]dio|ep|e)\s*0*(\d+)\b").unwrap());
+    let before = streams.len();
+    streams.retain(|stream| {
+        coordinates
+            .captures(&stream.quality)
+            .map(|parts| {
+                parts[1].parse::<u64>() == Ok(mapped.season)
+                    && parts[2].parse::<u64>() == Ok(mapped.episode)
+            })
+            .unwrap_or(false)
+    });
     before - streams.len()
 }
 
@@ -173,5 +202,24 @@ mod tests {
         ]}})).unwrap();
         assert!(identity.accepts(&source("Shared title · T01 EP01")));
         assert!(identity.accepts(&source("Other title · 1080p")));
+    }
+    #[test]
+    fn mapped_source_rejects_sequel_title_with_original_coordinates_and_accepts_base_title_with_correct_coordinates(
+    ) {
+        let mapped = crate::episode_ids::ImdbEpisode {
+            series_id: "tt7441658".into(),
+            season: 2,
+            episode: 1,
+            canonical_season: 1,
+            canonical_episode: 1,
+        };
+        let mut streams = vec![
+            source("Black Clover 2nd Season · T01 EP01"),
+            source("Black Clover · T02 EP01 (Ep. 171)"),
+            source("Black Clover · S02E02"),
+            source("Black Clover 2nd Season · 1080p"),
+        ];
+        assert_eq!(filter_mapped_streams(&mut streams, &mapped), 3);
+        assert_eq!(streams[0].quality, "Black Clover · T02 EP01 (Ep. 171)");
     }
 }
