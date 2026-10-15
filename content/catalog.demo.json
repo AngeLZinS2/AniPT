@@ -1,0 +1,65 @@
+{
+  "version": 1,
+  "generated_for": "desktop-demo",
+  "animes": [
+    {
+      "id": "dragon-ball-z",
+      "title": "Dragon Ball Z",
+      "title_ptbr": "Dragon Ball Z",
+      "cover_url": "https://cdn.myanimelist.net/images/anime/2/291831.jpg",
+      "synopsis": "Goku e seus amigos defendem a Terra de adversários cada vez mais poderosos.",
+      "genres": ["Ação", "Aventura", "Fantasia"],
+      "status": "completo",
+      "total_episodes": 291,
+      "year": 1989,
+      "provider": "mock",
+      "available_languages": ["dublado", "legendado"]
+    },
+    {
+      "id": "naruto",
+      "title": "Naruto",
+      "title_ptbr": "Naruto",
+      "cover_url": "https://cdn.myanimelist.net/images/anime/13/17405.jpg",
+      "synopsis": "Naruto Uzumaki sonha em se tornar o Hokage de sua aldeia.",
+      "genres": ["Ação", "Aventura", "Comédia"],
+      "status": "completo",
+      "total_episodes": 220,
+      "year": 2002,
+      "provider": "mock",
+      "available_languages": ["dublado", "legendado"]
+    },
+    {
+      "id": "attack-on-titan",
+      "title": "Attack on Titan",
+      "title_ptbr": "Ataque dos Titãs",
+      "cover_url": "https://cdn.myanimelist.net/images/anime/10/47347.jpg",
+      "synopsis": "Em um mundo cercado por gigantes, Eren Yeager decide lutar pela sobrevivência da humanidade.",
+      "genres": ["Ação", "Drama", "Fantasia"],
+      "status": "completo",
+      "total_episodes": 87,
+      "year": 2013,
+      "provider": "mock",
+      "available_languages": ["dublado", "legendado"]
+    }
+  ],
+  "seasons": [
+    {"id": "dbz_s1", "anime_id": "dragon-ball-z", "number": 1, "title": "Saga dos Saiyajins", "episode_count": 35},
+    {"id": "naruto_s1", "anime_id": "naruto", "number": 1, "title": "Temporada 1", "episode_count": 80},
+    {"id": "aot_s1", "anime_id": "attack-on-titan", "number": 1, "title": "Temporada 1", "episode_count": 25}
+  ],
+  "episodes": [
+    {"id": "dragon-ball-z_s1_e1", "anime_id": "dragon-ball-z", "season_id": "dbz_s1", "season": 1, "number": 1, "title": "Episódio 1", "duration": 1440},
+    {"id": "naruto_s1_e1", "anime_id": "naruto", "season_id": "naruto_s1", "season": 1, "number": 1, "title": "Episódio 1", "duration": 1440},
+    {"id": "attack-on-titan_s1_e1", "anime_id": "attack-on-titan", "season_id": "aot_s1", "season": 1, "number": 1, "title": "Episódio 1", "duration": 1440}
+  ],
+  "streams": [
+    {
+      "episode_id": "naruto_s1_e1",
+      "url": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+      "quality": "720p",
+      "language": "dublado",
+      "format": "mp4",
+      "is_hls": false
+    }
+  ]
+}

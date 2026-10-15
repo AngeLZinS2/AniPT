@@ -1,298 +1,154 @@
-# AniPT — Anime CLI Brasileiro
+<p align="center">
+  <img src="frontend/public/anibr-icon.png" alt="Ícone AniBR" width="88" />
+</p>
 
-<div align="center">
+# AniBR
 
-```
-  █████╗ ███╗   ██╗██╗██████╗ ████████╗
- ██╔══██╗████╗  ██║██║██╔══██╗╚══██╔══╝
- ███████║██╔██╗ ██║██║██████╔╝   ██║   
- ██╔══██║██║╚██╗██║██║██╔═══╝    ██║   
- ██║  ██║██║ ╚████║██║██║        ██║   
- ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝╚═╝        ╚═╝   
-      Anime CLI Brasileiro (PT-BR)
-```
+### Catálogo, biblioteca pessoal e reprodução · Projeto desktop de portfólio
 
-![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?logo=go)
-![License](https://img.shields.io/badge/Licença-MIT-blue)
-![Platform](https://img.shields.io/badge/Plataforma-Linux%20%7C%20Windows%20%7C%20macOS-lightgrey)
+Aplicativo em português do Brasil desenvolvido por **Angelo Neri** com **Rust, Tauri 2 e TypeScript**. Reúne descoberta de animes, organização pessoal e um player integrado, com dados pessoais armazenados localmente.
 
-**Assista animes em português diretamente no seu terminal.**
+**[Conhecer o projeto e assistir à apresentação ↗](http://173.212.251.120:8085/)** · **[Baixar para Windows](http://173.212.251.120:8085/#download)** · **[Como adicionar fontes](http://173.212.251.120:8085/#fontes)** · **[LinkedIn](https://www.linkedin.com/in/angelo-neri-3921a72b9/)**
 
-</div>
+![AniBR — catálogo com busca e filtros](website/dist/assets/catalog.jpg)
 
----
+## O projeto
 
-## 📖 Sobre
+O AniBR nasceu da evolução do **AniPT**, um cliente de terminal escrito em Go. A versão desktop mantém essa história no repositório e propõe uma experiência visual própria: descobrir uma obra, organizar o que assistir e retomar um episódio no ponto salvo.
 
-AniPT é um cliente de terminal para assistir animes em **português do Brasil** (dublado e legendado), inspirado no [`ani-cli`](https://github.com/pystardust/ani-cli), porém completamente reescrito em **Go moderno** com uma interface TUI rica e bonita.
+Trabalhei tanto na interface quanto na integração com serviços externos, persistência, reprodução e distribuição para Windows. O catálogo utiliza metadados do AniList; as fontes de reprodução são instaladas pela pessoa e têm sua disponibilidade verificada separadamente.
 
-### Funcionalidades
+O site público apresenta as funcionalidades, um vídeo de 30 segundos e os downloads. A experiência completa de reprodução funciona no aplicativo desktop.
 
-| Recurso | Status |
-|---------|--------|
-| 🔍 Pesquisa de animes | ✅ |
-| ⭐ Favoritos interativos | ✅ |
-| 📋 Histórico de visualização | ✅ |
-| ▶️ Continuar assistindo | ✅ |
-| 🕐 Pesquisas recentes | ✅ |
-| 💾 Cache SQLite | ✅ |
-| 🎯 Seleção de qualidade | ✅ |
-| 🔊 Seleção de idioma (DUB/LEG) | ✅ |
-| 📖 Painel de Informações Lateral | ✅ (Com sinopse traduzida e metadados) |
-| 📅 Catálogo e Filtros de Gênero | ✅ (Lançamentos, Ação, Aventura, etc.) |
-| 📺 Modo fullscreen | ✅ |
-| ⚙️ Configuração persistente | ✅ |
-| 🌐 Múltiplos provedores | ✅ |
+## Funcionalidades
 
----
+| Área | Recursos implementados |
+| --- | --- |
+| Descoberta | Destaques, busca, filtros por gênero, ano, temporada, formato e status |
+| Novidades | Exibições recentes na home e histórico paginado em “Ver mais”, sem corte de 72 horas |
+| Detalhes | Sinopse, gêneros, relações entre obras e trailer quando informado pelo AniList |
+| Episódios | Até 15 por página, busca e imagens com fallback para banner ou capa |
+| Biblioteca pessoal | Favoritos e lista com Quero assistir, Assistindo, Concluído, Pausado e Abandonado |
+| Histórico | Retomada do ponto salvo, edição do progresso e remoção de registros |
+| Player | HLS e vídeo direto, seleção de fontes e qualidades disponíveis, velocidade, atalhos e tela cheia |
+| Torrents | Motor integrado, seleção do arquivo de vídeo, quota e limpeza manual do cache |
+| Preferências | Idioma, qualidade, densidade, histórico e próximo episódio automático |
+| Dados locais | Backup JSON de lista, favoritos, progresso e sinopses, com importação por identidade |
+| Agenda | Horários locais e avisos opcionais enquanto o aplicativo está aberto |
 
-## 🚀 Instalação
+A sinopse original pode receber tradução PT-BR sob demanda pelo MyMemory ou revisão manual. A tradução automática envia a sinopse pública selecionada ao serviço; o texto revisado fica salvo localmente.
 
-### 🪟 Windows — Guia Passo a Passo (Sem precisar instalar nada extra!)
+## Uma primeira interação própria
 
-> **Objetivo**: apertar duplo clique e o AniPT abre direto no terminal. Sem código, sem configuração manual.
+![AniBR — apresentação inicial com lettering Olá](website/dist/assets/intro-ola.png)
 
-#### Passo 1 — Baixe o mpv (player de vídeo)
+A apresentação combina lettering SVG animado com escrita e retração em loop e um mosaico de cenas revelado em faixas que acompanham o cursor. As faixas compartilham um único vídeo, com pausa na inatividade e liberação dos recursos ao sair da tela.
 
-O mpv é o programa que reproduz o vídeo dos animes. É gratuito e leve.
+O nome é opcional e fica no dispositivo. Também é possível continuar sem se identificar, editar o perfil ou rever a introdução nas configurações. A saudação respeita movimento reduzido e permite ativar as animações por escolha explícita.
 
-1. Acesse: **https://mpv.io/installation/**
-2. Clique em **"Windows builds by shinchiro"** e baixe o arquivo `.7z` mais recente (ex: `mpv-x86_64-20240101.7z`)
-3. Extraia o arquivo para **`C:\mpv\`** — a estrutura deve ficar assim:
-   ```
-   C:\mpv\
-   ├── mpv.exe      ← este é o que o AniPT procura
-   ├── mpv.com
-   └── ...
-   ```
+## Stack e arquitetura
 
-> 💡 **Dica**: O AniPT procura automaticamente o mpv em `C:\mpv\mpv.exe`. Não precisa configurar PATH!
+| Camada | Tecnologias |
+| --- | --- |
+| Interface desktop | TypeScript, Vite, HTML, CSS e SVG |
+| Aplicativo nativo | Rust e Tauri 2 |
+| Persistência | SQLite, configuração YAML e armazenamento local do WebView |
+| Catálogo e identificação | AniList e correspondência de identidade com Kitsu |
+| Reprodução | HTML5 Video, hls.js e WebView2 no Windows |
+| Torrents | librqbit, Tokio e servidor local com Axum |
+| Site de apresentação | HTML, CSS e JavaScript; Nginx e Docker Compose na VPS |
+| Vídeo de apresentação | Composição editável em HyperFrames |
 
-#### Passo 2 — Baixe o AniPT
-
-1. Acesse a [página de releases](https://github.com/AngeLZinS2/AniPT/releases)
-2. Baixe o arquivo **`anipt.exe`** (Windows 64-bit)
-3. Baixe também o arquivo **`AniPT.bat`** (launcher)
-4. Coloque os dois arquivos na **mesma pasta**, por exemplo:
-   ```
-   C:\AniPT\
-   ├── anipt.exe    ← o aplicativo principal
-   └── AniPT.bat   ← clique duplo aqui para abrir!
-   ```
-
-#### Passo 3 — Execute!
-
-Dê **duplo clique** em `AniPT.bat`. Uma janela de terminal vai abrir com o AniPT pronto para uso.
-
-> ⚠️ **Atenção**: Não clique diretamente em `anipt.exe`. Use sempre o `AniPT.bat` para que a janela não feche sozinha.
-
----
-
-### 🐧 Linux / macOS
-
-**Pré-requisitos:**
-```bash
-# Linux
-sudo apt install mpv   # Ubuntu/Debian
-sudo pacman -S mpv     # Arch
-
-# macOS
-brew install mpv
+```mermaid
+flowchart LR
+    AniList["AniList · metadados"] --> UI["Interface · TypeScript"]
+    UI <-->|comandos Tauri| Core["Núcleo · Rust"]
+    Core <--> DB[(SQLite e configuração local)]
+    UI <--> Local["Perfil e biblioteca no WebView"]
+    Core <-->|manifest e episódio| Addons["Fontes instaladas"]
+    Core --> Torrent["librqbit · streaming local"]
+    Torrent --> Player["Player integrado"]
+    Addons -->|vídeo direto ou HLS| Player
 ```
 
-**Baixe e instale o binário:**
-```bash
-# Linux (amd64)
-curl -L https://github.com/AngeLZinS2/AniPT/releases/latest/download/anipt-linux-amd64 -o anipt
-chmod +x anipt
-sudo mv anipt /usr/local/bin/
+### Decisões de implementação
 
-# macOS (Apple Silicon)
-curl -L https://github.com/AngeLZinS2/AniPT/releases/latest/download/anipt-darwin-arm64 -o anipt
-chmod +x anipt
-sudo mv anipt /usr/local/bin/
-```
+- **Identidade do episódio:** a correspondência entre obra, temporada e IDs das fontes é conferida antes da reprodução, para reduzir associações incorretas.
+- **Persistência local:** histórico e favoritos usam SQLite; perfil e recursos da interface usam armazenamento local. Não há cadastro obrigatório.
+- **Streaming interno:** torrents são servidos por loopback, com token por processo e suporte a requisições Range para navegação no vídeo. Upload está desativado na compilação.
+- **Uso de recursos:** o mosaico inicial utiliza um único decodificador; sair da apresentação remove vídeo, máscaras e eventos.
+- **Backup delimitado:** o JSON exporta a biblioteca pessoal e as sinopses. URLs privadas das fontes precisam ser reinstaladas e não acompanham o backup.
 
-Execute com:
-```bash
-anipt
-```
+## Instalar e experimentar
 
----
+Versão desktop disponível: **0.3.1**, para **Windows 64 bits**.
 
-## 🔨 Compilação (para desenvolvedores)
+- **[Instalador Windows](http://173.212.251.120:8085/downloads/AniBR-0.3.1-Setup.exe)** — instalação assistida.
+- **[Versão portátil ZIP](http://173.212.251.120:8085/downloads/AniBR-0.3.1-Portable.zip)** — extraia a pasta e execute `AniBR.exe`.
+- **[SHA-256 dos arquivos](http://173.212.251.120:8085/downloads/SHA256SUMS.txt)** — conferência dos downloads.
 
-Necessário apenas se quiser compilar do código-fonte.
+Ambas as versões utilizam WebView2 e os dados locais do perfil do Windows. O portátil dispensa a instalação do aplicativo, mas seus dados não ficam isolados dentro do ZIP.
 
-```bash
-# Requisitos: Go 1.24+
+Para adicionar uma fonte, abra **Configurações → Fontes instaladas**, informe o endereço do manifest e use **Adicionar fonte** e **Testar fonte**. O [guia ilustrado no site](http://173.212.251.120:8085/#fontes) mostra o processo e o acesso ao catálogo comunitário de addons.
+
+## Executar localmente
+
+Pré-requisitos: **Node.js 20+**, npm, Rust estável e ambiente nativo do Tauri. No Windows, instale as ferramentas C++ do Visual Studio Build Tools e o WebView2.
+
+```powershell
 git clone https://github.com/AngeLZinS2/AniPT.git
 cd AniPT
-
-go mod download
-
-# Compilar para Windows
-GOOS=windows GOARCH=amd64 go build -o bin/anipt.exe ./cmd/anipt/
-
-# Compilar para Linux
-go build -o bin/anipt ./cmd/anipt/
-
-# Usando Makefile (Linux/macOS)
-make build
-make cross-compile
+npm ci
+npm --prefix frontend ci
+npm run dev
 ```
 
----
+Para abrir somente a interface no navegador, execute `npm --prefix frontend run dev`. A instalação de fontes, o motor torrent e os comandos nativos exigem o aplicativo desktop.
 
-## 🎮 Uso
+### Testes e compilação
 
-### Interface interativa (TUI)
-
-```bash
-# Windows (via launcher)
-AniPT.bat
-
-# Linux / macOS
-anipt
+```powershell
+npm --prefix frontend test
+npm --prefix frontend run build
+cargo test --manifest-path src-tauri/Cargo.toml --lib
+npm run build
 ```
 
-### Pesquisa direta via CLI
+Os instaladores são gerados em `src-tauri/target/release/bundle/` e o executável em `src-tauri/target/release/anipt.exe`. O nome visível é AniBR; o identificador `br.com.anipt.desktop` preserva a continuidade dos dados locais.
 
-```bash
-anipt search "dragon ball"
-anipt search naruto
+A versão 0.3.1 foi validada com **42 testes de frontend**, **20 testes Rust aprovados** e compilação dos pacotes Windows. Dois testes Rust que dependem de rede são opcionais e ficam ignorados na execução padrão. A disponibilidade dos serviços externos continua dependendo da rede e das fontes.
+
+## Estrutura do repositório
+
+```text
+frontend/               Interface, recursos visuais e testes
+src-tauri/              Núcleo Rust, banco, fontes, player e torrents
+content/                Conteúdo compartilhado e decisões de arquitetura
+website/                Site estático e configuração de publicação na VPS
+videos/anibr-showcase/  Projeto editável do vídeo de apresentação
+scripts/                Preparação de mídia e prévia local do site
+docs/                   Guias, créditos e documentação do projeto
+cmd/ e internal/        Implementação histórica da CLI Go
 ```
 
-### Gerenciar histórico
+Prévia local do site: `node scripts/serve-anibr-site.mjs`, em `http://127.0.0.1:5180/`. O código estático está em `website/dist/` e não precisa de build. Os instaladores ficam fora do Git; veja [preparação dos downloads e publicação](website/deploy/README.md).
 
-```bash
-anipt history           # Listar histórico
-anipt history clear     # Limpar histórico
-```
+Guias: [primeiro acesso](docs/PRIMEIRO_ACESSO.md), [fontes e provedores](docs/PROVIDERS.md), [CLI legada](docs/CLI_LEGADO.md) e [apresentação para LinkedIn](docs/LINKEDIN.md). O `anipt.exe` da raiz e `AniPT.bat` pertencem à CLI antiga; para o desktop, utilize os downloads acima.
 
-### Gerenciar favoritos
+## Integrações e limites
 
-```bash
-anipt favorites          # Listar favoritos
-anipt favorites remove "Naruto"  # Remover favorito
-```
+A reprodução depende de addons compatíveis, da correspondência de IDs e da disponibilidade dos servidores ou peers. Qualidades e faixas de idioma são aquelas fornecidas pela fonte. Codecs dependem do WebView2; o app não realiza transcodificação de MKV/HEVC. Durante P2P, peers e trackers podem visualizar o IP da conexão.
 
-### Configurações
+Metadados de exibição no catálogo não comprovam que um vídeo esteja disponível. O AniBR não hospeda episódios e não exige conta própria; suas integrações de catálogo, tradução e reprodução utilizam serviços externos.
 
-```bash
-anipt config                        # Ver configurações
-anipt config set player vlc         # Usar VLC como player
-anipt config set quality 720p       # Qualidade padrão
-anipt config set language legendado # Idioma padrão
-anipt config set provider animefire # Provedor (animefire | goyabu | multi)
-```
+## Créditos e licença
 
----
+O código do projeto utiliza a [licença MIT](LICENSE). O botão adaptado do Uiverse mantém sua [atribuição e licença](docs/UIVERSE_LICENSE.md); a fonte Manrope do site acompanha o [aviso OFL](website/dist/assets/Manrope-OFL.txt).
 
+Imagens, obras e trailers pertencem aos respectivos titulares. A licença do código não transfere os direitos dessas mídias. A procedência do mosaico está registrada em [WELCOME_MEDIA_SOURCES.json](docs/WELCOME_MEDIA_SOURCES.json). Projeto independente, sem afiliação oficial com AniList, Kitsu ou os titulares das obras apresentadas.
 
-## ⌨️ Atalhos de teclado
+## Autor
 
-| Tecla | Ação (Na Home) | Ação (Nas Listas / Resultados) |
-|-------|----------------|-------------------------------|
-| `↑` `↓` | - | Navegar na lista |
-| `Enter` | Ir para pesquisa | Selecionar / Confirmar item |
-| `Esc` | Sair | Voltar para a tela anterior |
-| `T` | Abrir Catálogo e Gêneros | - |
-| `F` | Abrir Meus Favoritos | Toggle favorito (adiciona/remove na hora) |
-| `H` | Abrir Histórico | - |
-| `C` | Ver atalho de configurações | - |
-| `/` | - | Filtrar lista (busca rápida) |
-| `Ctrl+C`| Sair | Sair do aplicativo |
+**Angelo Neri** · [GitHub: AngeLZinS2](https://github.com/AngeLZinS2) · [LinkedIn](https://www.linkedin.com/in/angelo-neri-3921a72b9/)
 
----
-
-## ⚙️ Configuração
-
-O arquivo de configuração fica em:
-- **Linux/macOS**: `~/.config/anipt/config.yaml`
-- **Windows**: `%APPDATA%\anipt\config.yaml`
-
-```yaml
-# Exemplo de config.yaml
-player: mpv           # mpv | vlc
-quality: best         # best | 1080p | 720p | 480p | 360p
-language: dublado     # dublado | legendado
-provider: multi       # mock | animefire | goyabu | multi
-fullscreen: true
-cache: true
-cache_ttl: 3600
-history: true
-auto_next: true
-```
-
----
-
-## 🌐 Provedores
-
-| Nome | Identificador | URL | Status |
-|------|--------------|-----|--------|
-| Multi-Provedor | `multi` | busca agregada | ✅ Ativo (Agrega todos) |
-| AnimeFire | `animefire` | [animefire.io](https://animefire.io/) | ✅ Ativo e Estável |
-| Goyabu | `goyabu` | [goyabu.io](https://goyabu.io/) | ✅ Ativo e Estável |
-| Mock (Demo) | `mock` | local | ✅ Apenas testes |
-
-Para criar um novo provedor, consulte [docs/PROVIDERS.md](docs/PROVIDERS.md).
-
----
-
-## 🏗️ Estrutura do Projeto
-
-```
-anipt/
-├── cmd/anipt/          # Ponto de entrada
-├── internal/
-│   ├── cli/            # Subcomandos Cobra (search, config, history, favorites)
-│   ├── config/         # Configuração (Viper)
-│   ├── database/       # SQLite + migrations
-│   │   └── repositories/  # Repository pattern (cache, favorites, history)
-│   ├── favorites/      # Serviço de favoritos
-│   ├── history/        # Serviço de histórico
-│   ├── models/         # Tipos de domínio (anime, season, episode, stream)
-│   ├── player/         # mpv, VLC
-│   ├── providers/      # Interface + provedores
-│   │   ├── animefire/  # Scraper AnimeFire
-│   │   ├── goyabu/     # Scraper Goyabu
-│   │   ├── mock/       # Provedor de testes (Mock)
-│   │   └── multi/      # Agregador multi-provider
-│   ├── tui/            # Interface BubbleTea
-│   │   └── styles/     # Design system Lipgloss
-│   └── utils/          # HTTP, strings, terminal
-├── assets/             # Banner ASCII
-├── config/             # Config de exemplo
-└── docs/               # Documentação extra
-```
-
----
-
-## 🤝 Contribuindo
-
-1. Fork o repositório
-2. Crie uma branch (`git checkout -b feature/nova-funcionalidade`)
-3. Commit suas mudanças (`git commit -m 'feat: nova funcionalidade'`)
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-5. Abra um Pull Request
-
-Para adicionar um novo provedor, veja [docs/PROVIDERS.md](docs/PROVIDERS.md).
-
----
-
-## 📜 Licença
-
-MIT License — veja [LICENSE](LICENSE) para detalhes.
-
-<div align="center">
-Feito com ❤️ para a comunidade anime brasileira
-
-### 👨‍💻 Desenvolvido por Angelo Neri
-**Gopher & Software Engineer**
-
-Gostou do projeto? Conecte-se no LinkedIn!
-
-[![LinkedIn Badge](https://img.shields.io/badge/LinkedIn-Angelo%20Neri-blue?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/angelo-neri-3921a72b9/)
-
-</div>
+[Conhecer a apresentação](http://173.212.251.120:8085/) · [Código e decisões técnicas](https://github.com/AngeLZinS2/AniPT) · [Texto para LinkedIn](docs/LINKEDIN.md)

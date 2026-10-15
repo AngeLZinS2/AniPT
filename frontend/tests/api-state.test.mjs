@@ -1,0 +1,14 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {fileURLToPath} from 'node:url';
+import {build} from 'esbuild';
+const result=await build({absWorkingDir:fileURLToPath(new URL('..',import.meta.url)),entryPoints:['src/api.ts'],bundle:true,platform:'node',format:'esm',write:false});
+globalThis.window={};
+const {api}=await import(`data:text/javascript;base64,${Buffer.from(result.outputFiles[0].text).toString('base64')}`);
+function storage(){const object={getItem:key=>object[key]??null,setItem:(key,value)=>object[key]=String(value),removeItem:key=>delete object[key]};globalThis.localStorage=object;return object}
+const anime={id:'anilist:20',title:'Naruto',subtitle:'Naruto',description:'Original.',color:'#8955ff',year:2002,rating:8,episodes:220,tags:['Action'],provider:'addon:https://anime-kitsu.strem.fun|anime'};
+const progress={anime_id:anime.id,anime_title:anime.title,provider:anime.provider,season:1,episode:16,episode_title:'Episódio 16',language:'Legendado',quality:'1080p',timestamp:300,duration:1200,completed:false};
+test('API persists false preferences, merges quota and normalizes legacy labels',async()=>{storage();await api.saveSettings({quality:'4K',language:'Dublado',history:false,auto_next:false});await api.saveSettings({cache_quota_gb:20});const settings=await api.getSettings();assert.equal(settings.history,false);assert.equal(settings.auto_next,false);assert.equal(settings.cache_quota_gb,20);assert.equal(settings.quality,'2160p');assert.equal(settings.language,'dublado')});
+test('disabled automatic history records nothing while explicit edits remain possible',async()=>{storage();await api.saveSettings({history:false});await api.saveProgress(progress);assert.equal((await api.allProgress()).length,0);await api.importProgress([progress]);assert.equal((await api.allProgress())[0].episode,16);await api.removeProgress(anime,1,16);assert.equal((await api.allProgress()).length,0)});
+test('browser favorites actually add and remove persisted entries',async()=>{storage();await api.toggleFavorite(anime);assert.equal((await api.favorites()).length,1);assert.equal(anime.favorite,true);await api.toggleFavorite(anime);assert.equal((await api.favorites()).length,0);assert.equal(anime.favorite,false)});
+test('browser backup restores original data if a storage write fails midway',async()=>{const data=storage();await api.saveSettings({history:true});await api.putFavorite(anime);const previous=data['anipt-favorites'],original=data.setItem;let failed=false;data.setItem=(key,value)=>{if(key.endsWith(':1:17')&&!failed){failed=true;throw new Error('Simulated quota')}return original(key,value)};await assert.rejects(api.importUserData([],[progress,{...progress,episode:17}]),/Simulated quota/);assert.equal(data['anipt-favorites'],previous);assert.equal((await api.allProgress()).length,0)});

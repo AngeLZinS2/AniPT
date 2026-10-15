@@ -9,3 +9,14 @@
 *.yml text eol=lf
 *.mod text eol=lf
 *.sum text eol=lf
+*.rs text eol=lf
+*.toml text eol=lf
+*.lock text eol=lf
+*.ts text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.sh text eol=lf
+website/dist/downloads/SHA256SUMS.txt text eol=lf

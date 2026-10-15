@@ -1,0 +1,1 @@
+AniBR. Catálogo AniList. Filtros, episódios, Minha lista, Favoritos, Histórico. Nome opcional salvo localmente. Capturas reais da versão 0.3.0, em sessão isolada sem dados pessoais.

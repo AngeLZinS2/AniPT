@@ -1,0 +1,11 @@
+{
+  "app": {"name": "AniPT", "tagline": "Anime em português, agora no desktop."},
+  "nav": {"home": "Início", "search": "Buscar", "favorites": "Favoritos", "history": "Histórico", "settings": "Configurações"},
+  "home": {"welcome": "O que vamos assistir?", "continue_watching": "Continuar assistindo", "recent": "Adicionados recentemente", "empty": "Seu catálogo aparecerá aqui."},
+  "search": {"placeholder": "Busque por título…", "results": "Resultados", "no_results": "Nenhum anime encontrado.", "hint": "Tente outro título ou provedor."},
+  "anime": {"seasons": "Temporadas", "episodes": "Episódios", "play": "Assistir", "resume": "Continuar", "favorite_add": "Adicionar aos favoritos", "favorite_remove": "Remover dos favoritos", "dubbed": "Dublado", "subbed": "Legendado", "complete": "Completo", "ongoing": "Em andamento"},
+  "player": {"opening": "Abrindo o reprodutor…", "quality": "Qualidade", "language": "Idioma", "no_source": "Não há uma fonte disponível para este episódio."},
+  "settings": {"player": "Reprodutor", "provider": "Provedor", "quality": "Qualidade preferida", "language": "Idioma preferido", "fullscreen": "Abrir em tela cheia", "cache": "Usar cache", "history": "Salvar histórico", "auto_next": "Reproduzir próximo episódio", "save": "Salvar alterações", "saved": "Configurações salvas."},
+  "errors": {"generic": "Algo deu errado. Tente novamente.", "offline": "Sem conexão com a internet.", "provider": "O provedor não respondeu.", "player_missing": "Nenhum reprodutor compatível foi encontrado.", "database": "Não foi possível acessar os dados locais."},
+  "common": {"back": "Voltar", "cancel": "Cancelar", "close": "Fechar", "retry": "Tentar novamente", "loading": "Carregando…", "unknown": "Desconhecido"}
+}

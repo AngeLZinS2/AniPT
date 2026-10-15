@@ -19,6 +19,7 @@ bin/
 *.yaml
 *.yml
 !config/config.yaml.example
+!website/deploy/compose.yaml
 local_config.yaml
 scratch.go
 
@@ -35,3 +36,29 @@ Thumbs.db
 *.sln
 *.sw?
 .gemini/
+
+# Desktop app build artifacts
+node_modules/
+frontend/node_modules/
+frontend/dist/
+src-tauri/target/
+
+# Local media preparation tools and source downloads
+.tools/
+.media-work/
+
+# Local review state and generated schemas
+.taste-skill/
+WORK_STATUS.md
+src-tauri/gen/
+
+# Website hosting metadata and release binaries (download from the public site)
+website/.openai/
+website/dist/downloads/*.exe
+website/dist/downloads/*.zip
+
+# HyperFrames caches, exports and duplicate source captures
+videos/**/.hyperframes/
+videos/**/.thumbnails/
+videos/**/renders/
+videos/**/Captura de tela*.png

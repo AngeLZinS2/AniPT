@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="assets/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #000;
+      }
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: #0c0b10;
+      }
+      .scene {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-j7pz"
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="30"
+      data-width="1920"
+      data-height="1080"
+    >
+      <div data-hf-id="hf-g8r8"
+        id="el-01-intro"
+        class="scene"
+        data-composition-id="01-intro"
+        data-composition-src="compositions/frames/01-intro.html"
+        data-start="0"
+        data-duration="4.5"
+        data-track-index="0"
+      ></div>
+
+      <div data-hf-id="hf-116g"
+        id="el-02-discover"
+        class="scene"
+        data-composition-id="02-discover"
+        data-composition-src="compositions/frames/02-discover.html"
+        data-start="4"
+        data-duration="7.5"
+        data-track-index="1"
+      ></div>
+
+      <div data-hf-id="hf-twcx"
+        id="el-03-episodes"
+        class="scene"
+        data-composition-id="03-episodes"
+        data-composition-src="compositions/frames/03-episodes.html"
+        data-start="11"
+        data-duration="7.5"
+        data-track-index="0"
+      ></div>
+
+      <div data-hf-id="hf-6ae4"
+        id="el-04-local"
+        class="scene"
+        data-composition-id="04-local"
+        data-composition-src="compositions/frames/04-local.html"
+        data-start="18"
+        data-duration="6.5"
+        data-track-index="1"
+      ></div>
+
+      <div data-hf-id="hf-h5xk"
+        id="el-05-outro"
+        class="scene"
+        data-composition-id="05-outro"
+        data-composition-src="compositions/frames/05-outro.html"
+        data-start="24"
+        data-duration="6"
+        data-track-index="0"
+      ></div>
+
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+      // ── frame transitions (injected by transitions.mjs) ──
+      (function () { var tl = window.__timelines["main"];
+        tl.to("#el-01-intro", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 4);
+        tl.fromTo("#el-02-discover", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 4);
+        tl.to("#el-02-discover", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 11);
+        tl.fromTo("#el-03-episodes", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 11);
+        tl.to("#el-03-episodes", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 18);
+        tl.fromTo("#el-04-local", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 18);
+        tl.to("#el-04-local", { opacity: 0, duration: 0.5, ease: "power2.inOut" }, 24);
+        tl.fromTo("#el-05-outro", { opacity: 0 }, { opacity: 1, duration: 0.5, ease: "power2.inOut" }, 24);
+        tl.to({}, { duration: 30 }, 0); // full-span anchor — main.duration() == composition total (Studio master duration)
+      })();
+    </script>
+  </body>
+</html>

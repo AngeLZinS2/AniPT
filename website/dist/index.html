@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0c0b10">
+  <meta name="description" content="Descubra animes, organize sua lista e encontre seu próximo episódio. Conheça o AniBR, um app desktop em português, com seus dados pessoais salvos localmente.">
+  <meta property="og:title" content="AniBR — Seu próximo anime começa aqui">
+  <meta property="og:description" content="Um universo de histórias. Um app do seu jeito. Conheça o AniBR para Windows.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/catalog.jpg">
+  <title>AniBR — Seu próximo anime começa aqui</title>
+  <link rel="icon" type="image/png" href="assets/anibr-icon.png">
+  <link rel="preload" href="assets/manrope.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
+  <header class="site-header wrap">
+    <a class="brand" href="#inicio" aria-label="AniBR, início"><img src="assets/anibr-icon.png" alt="" width="40" height="40"><span>AniBR<span class="brand-dot">.</span></span></a>
+    <nav aria-label="Navegação principal"><a href="#experiencia">A experiência</a><a href="#recursos">Recursos</a><a href="#fontes">Como adicionar fontes</a><a href="#perguntas">Perguntas</a></nav>
+    <a class="header-download" href="#download">Para Windows <span aria-hidden="true">↗</span></a>
+  </header>
+  <main id="conteudo">
+    <section class="hero wrap" id="inicio">
+      <div class="hero-orbit" aria-hidden="true"></div>
+      <p class="eyebrow"><span class="status-light" aria-hidden="true"></span> FEITO PARA QUEM AMA ANIME</p>
+      <h1>Seu próximo anime<br><span>começa aqui.</span></h1>
+      <p class="hero-copy">Novas histórias para descobrir.<br>Suas favoritas, sempre por perto. Tudo no seu ritmo.</p>
+      <div class="hero-actions"><a class="button primary" href="#experiencia"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m9 5 11 7-11 7z"/></svg>Conheça o AniBR</a><a class="button secondary" href="#download">Baixar para Windows <span aria-hidden="true">↓</span></a></div>
+      <p class="hero-note">Em português. Sem conta obrigatória. Do seu jeito.</p>
+      <div class="demo-window" id="experiencia">
+        <div class="window-chrome"><span class="window-dots" aria-hidden="true"><i></i><i></i><i></i></span><span>AniBR · uma nova história</span><span class="chrome-platform">DESKTOP</span></div>
+        <div class="demo-screen">
+          <video id="demo-video" controls autoplay muted playsinline preload="metadata" poster="assets/intro-ola.png" aria-label="Demonstração do aplicativo AniBR em português"><source src="assets/anibr-showcase.mp4" type="video/mp4"><track kind="captions" src="assets/demo-pt.vtt" srclang="pt-BR" label="Português"></video>
+          <button class="play-overlay" id="play-demo" aria-label="Assistir à demonstração do AniBR"><span class="play-circle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 11 7-11 7z"/></svg></span><span>Entre no universo AniBR<small>Uma apresentação do app · 30 segundos</small></span></button>
+        </div>
+        <div class="demo-caption"><span><span class="tiny-star" aria-hidden="true">✦</span> Imagens reais do aplicativo</span><span>1080p <span class="caption-divider">/</span> PT-BR</span></div>
+      </div>
+      <p class="under-demo">Uma interface pensada para deixar a história em primeiro plano.</p>
+    </section>
+
+    <section class="experience wrap section-space" id="recursos">
+      <div class="section-heading"><div><p class="eyebrow">DO PRIMEIRO CLIQUE AO PRÓXIMO EPISÓDIO</p><h2>Menos procurando.<br><span>Mais descobrindo.</span></h2></div><p>Explore o catálogo, conheça cada obra e mantenha suas escolhas organizadas em um só lugar.</p></div>
+      <div class="feature-layout">
+        <div class="feature-tabs" role="tablist" aria-label="Conheça os recursos do AniBR">
+          <button class="feature-tab active" id="tab-discover" role="tab" aria-selected="true" aria-controls="feature-panel" data-shot="catalog"><span class="feature-number">01</span><span><strong>Encontre sua próxima história</strong><small>Combine gênero, ano, temporada e formato. Vá além do que você já conhece.</small></span><span class="tab-arrow" aria-hidden="true">↗</span></button>
+          <button class="feature-tab" id="tab-details" role="tab" aria-selected="false" tabindex="-1" aria-controls="feature-panel" data-shot="details"><span class="feature-number">02</span><span><strong>Escolha com tudo à mão</strong><small>Sinopse, trailer, temporadas e episódios reunidos na página de cada anime.</small></span><span class="tab-arrow" aria-hidden="true">↗</span></button>
+          <button class="feature-tab" id="tab-personal" role="tab" aria-selected="false" tabindex="-1" aria-controls="feature-panel" data-shot="onboarding"><span class="feature-number">03</span><span><strong>Entre do seu jeito</strong><small>Nome opcional, dados pessoais locais e liberdade para continuar sem se identificar.</small></span><span class="tab-arrow" aria-hidden="true">↗</span></button>
+        </div>
+        <div class="feature-preview" role="tabpanel" id="feature-panel" aria-labelledby="tab-discover" tabindex="0"><div class="preview-tag"><span></span><b id="preview-label">Explore o catálogo</b></div><img id="feature-image" src="assets/catalog.jpg" alt="Tela real do catálogo AniBR, com filtros e capas de animes" width="1905" height="1072" loading="lazy"><div class="preview-bottom"><span>AniBR Desktop</span><span id="preview-index">01 / 03</span></div></div>
+      </div>
+    </section>
+
+    <section class="keep-section wrap section-space">
+      <div class="keep-heading"><p class="eyebrow">UM APP QUE ACOMPANHA VOCÊ</p><h2>Para as histórias que ficam.</h2></div>
+      <div class="benefit-grid">
+        <article><span class="line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 3h10v18l-5-4-5 4z"/></svg></span><h3>Sua lista, organizada</h3><p>Separe o que quer assistir, o que está acompanhando e as histórias que já concluiu.</p><span class="benefit-foot">Quero assistir · Assistindo · Concluído</span></article>
+        <article><span class="line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 3-6M4 4v5h5m3-1v5l3 2"/></svg></span><h3>Continue de onde parou</h3><p>Com o histórico ativado, o progresso fica salvo para você voltar ao ponto certo do episódio.</p><span class="benefit-foot">Retomada · Histórico · Favoritos</span></article>
+        <article><span class="line-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6zm-3 9 2 2 4-4"/></svg></span><h3>Seus dados, por perto</h3><p>Lista, favoritos e progresso salvos no dispositivo. Exporte um backup quando quiser levá-los com você.</p><span class="benefit-foot">Armazenamento local · Backup JSON</span></article>
+      </div>
+    </section>
+
+    <section class="download-section wrap section-space" id="download">
+      <div class="download-aura" aria-hidden="true"></div><div class="download-icon"><img src="assets/anibr-icon.png" alt="" width="96" height="96"></div>
+      <p class="eyebrow">SEU UNIVERSO ESTÁ A UM CLIQUE</p><h2>Abra espaço para<br><span>uma nova história.</span></h2><p>Conheça o AniBR no seu computador.</p>
+      <div class="download-actions"><a class="button primary download-button" href="downloads/AniBR-0.3.1-Setup.exe" download><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></svg>Instalador para Windows<span aria-hidden="true">↗</span></a><a class="button secondary download-button" href="downloads/AniBR-0.3.1-Portable.zip" download>Versão portátil (.zip)<span aria-hidden="true">↓</span></a></div>
+      <p class="download-meta">Windows 64 bits <span>·</span> Versão 0.3.1 <span>·</span> Instalador <span id="installer-size">17,2 MB</span> <span>·</span> Portátil <span id="portable-size">20,2 MB</span></p><p class="portable-note">Prefere usar sem instalar? Extraia o ZIP e abra o AniBR.exe.</p><a class="download-help" href="#fontes">Já instalou? Aprenda a adicionar suas fontes ↓</a>
+      <a class="source-link" href="https://github.com/AngeLZinS2/AniPT" target="_blank" rel="noopener noreferrer">Conheça o projeto no GitHub <span aria-hidden="true">↗</span></a>
+    </section>
+
+    <section class="source-guide wrap section-space" id="fontes" aria-labelledby="source-guide-title">
+      <div class="section-heading"><div><p class="eyebrow">DO DOWNLOAD AO PRIMEIRO PLAY</p><h2 id="source-guide-title">Suas fontes.<br><span>Seu próximo episódio.</span></h2></div><p>O catálogo já está no AniBR. Para encontrar opções de vídeo, adicione uma fonte compatível nas configurações.</p></div>
+      <div class="source-guide-layout">
+        <ol class="source-steps">
+          <li><span class="step-number" aria-hidden="true">01</span><div><h3>Encontre um addon de anime</h3><p>Abra a lista da comunidade e escolha um addon. Se ele oferecer uma página de configuração, ajuste as opções antes de copiar o link.</p><a class="guide-external" href="https://stremio-addons.net/addons?query=anime" target="_blank" rel="noopener noreferrer">Abrir addons de anime <span aria-hidden="true">↗</span></a></div></li>
+          <li><span class="step-number" aria-hidden="true">02</span><div><h3>Copie o endereço do manifesto</h3><p>Copie a URL do addon que termina em <code>manifest.json</code>. Se o link de instalação começar com <code>stremio://</code>, troque esse início por <code>https://</code> e mantenha o restante.</p></div></li>
+          <li><span class="step-number" aria-hidden="true">03</span><div><h3>Cole no AniBR e teste</h3><p>Abra <strong>Configurações → Fontes instaladas</strong>, cole em <strong>URL do manifest</strong> e clique em <strong>Adicionar fonte</strong>. Depois, use <strong>Testar fonte</strong> para conferir o que ela oferece.</p></div></li>
+        </ol>
+        <div class="source-guide-preview"><figure><figcaption><span aria-hidden="true">✦</span> Exemplo · endereço de instalação</figcaption><div class="manifest-example"><p class="manifest-label">SE O LINK VIER ASSIM</p><code><span>stremio://</span>addon.example/manifest.json</code><span class="manifest-arrow" aria-hidden="true">↓</span><p class="manifest-label">COLE ASSIM NO ANIBR</p><code class="manifest-ready"><span>https://</span>addon.example/manifest.json</code><p class="manifest-example-note">Endereço ilustrativo. Use o link do addon que você escolheu.</p></div><div class="manifest-destination"><span>NO APLICATIVO DESKTOP</span><p>Configurações <b aria-hidden="true">→</b> Fontes instaladas</p><small>URL do manifest <b aria-hidden="true">→</b> Adicionar fonte</small></div></figure><div class="source-guide-note"><strong>Confira o que a fonte oferece.</strong><p>Alguns addons oferecem só catálogo ou legendas. A reprodução depende do tipo de conteúdo, dos identificadores aceitos e da disponibilidade da fonte. Uma fonte incompatível será informada pelo app.</p></div></div>
+      </div>
+    </section>
+
+    <section class="faq wrap section-space" id="perguntas"><div><p class="eyebrow">ANTES DO PRÓXIMO PLAY</p><h2>Bom saber.</h2></div><div class="faq-list">
+      <details><summary>Preciso criar uma conta?<span aria-hidden="true">+</span></summary><p>Não. O nome na apresentação é opcional, fica salvo localmente e você pode continuar sem se identificar.</p></details>
+      <details><summary>Em quais sistemas o AniBR funciona?<span aria-hidden="true">+</span></summary><p>A versão disponível nesta página é para Windows de 64 bits. O aplicativo utiliza o WebView2 para a interface e reprodução.</p></details>
+      <details><summary>Como uso a versão portátil?<span aria-hidden="true">+</span></summary><p>Baixe o ZIP, extraia todos os arquivos e abra o AniBR.exe. Ela dispensa o instalador e utiliza o WebView2 do Windows, assim como a versão instalada. Os dados continuam salvos no dispositivo.</p></details>
+      <details><summary>De onde vêm o catálogo e os vídeos?<span aria-hidden="true">+</span></summary><p>Os dados de catálogo vêm do AniList. Episódios e reprodução dependem das fontes compatíveis instaladas no aplicativo. O AniBR não hospeda episódios, e a disponibilidade e a qualidade variam conforme a fonte.</p></details>
+      <details><summary>Posso fazer backup da minha lista?<span aria-hidden="true">+</span></summary><p>Sim. Nas configurações, você pode exportar favoritos, lista, progresso e sinopses em JSON e importar esses dados em outra instalação. Configurações privadas das fontes precisam ser reinstaladas.</p></details>
+    </div></section>
+  </main>
+  <footer class="site-footer wrap"><a class="brand" href="#inicio"><img src="assets/anibr-icon.png" alt="" width="32" height="32"><span>AniBR<span class="brand-dot">.</span></span></a><p>Desenvolvido por Angelo Neri.<br><span>Anime é só o começo.</span></p><div><a href="https://github.com/AngeLZinS2/AniPT" target="_blank" rel="noopener noreferrer">GitHub ↗</a><a href="https://www.linkedin.com/in/angelo-neri-3921a72b9/" target="_blank" rel="noopener noreferrer">LinkedIn ↗</a></div></footer>
+  <p class="media-note wrap">Imagens de animes pertencem aos respectivos titulares. AniBR é um projeto independente.</p>
+  <p id="video-status" class="sr-only" role="status"></p>
+  <script src="app.js" defer></script>
+</body>
+</html>
