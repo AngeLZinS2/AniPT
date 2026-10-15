@@ -234,6 +234,7 @@ mod tests {
             source: "Fixture".into(),
             torrent_file_index: None,
             requires_file_selection: false,
+            title:String::new(),seeders:None,episode_target:None,
         }
     }
 

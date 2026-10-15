@@ -197,6 +197,13 @@ mod availability_tests {
         });
     }
     #[test]
+    fn seed_count_is_reported_data_and_not_file_size_or_resolution() {
+        assert_eq!(stream_seeders(&serde_json::json!({}),"Title 2160p\n👥 1,204 💾 1.6 GB"),Some(1204));
+        assert_eq!(stream_seeders(&serde_json::json!({}),"Seeders: 82"),Some(82));
+        assert_eq!(stream_seeders(&serde_json::json!({"seeders":0}),"👥 82"),Some(0));
+        assert_eq!(stream_seeders(&serde_json::json!({}),"1080p · 63.7 GB"),None);
+    }
+    #[test]
     fn hianime_waits_for_documented_delay_without_changing_other_addons() {
         assert_eq!(addon_timeout("https://streamio-hianime.onrender.com"),std::time::Duration::from_secs(70));
         assert_eq!(addon_timeout("https://streamio-hianime.onrender.com.example.test"),std::time::Duration::from_secs(15));
@@ -772,7 +779,7 @@ pub async fn streams(
             let hls=!is_torrent&&parsed.path().to_lowercase().ends_with(".m3u8");
             let format=if is_torrent {"Torrent"} else if hls {"HLS"} else if parsed.path().to_lowercase().ends_with(".mp4") {"MP4"} else {"Vídeo direto"};
             let host=reqwest::Url::parse(base).ok().and_then(|u|u.host_str().map(str::to_owned)).unwrap_or_default();
-            Some(StreamSource{url:url.into(),quality:description,language:audio.into(),format:format.into(),is_hls:hls,requires_file_selection:false,torrent_file_index:s.get("fileIdx").and_then(Value::as_u64).map(|index|index as usize),source:if name.is_empty(){host}else{format!("{name} · {host}")}})
+            Some(StreamSource{url:url.into(),quality:description.clone(),language:audio.into(),format:format.into(),is_hls:hls,title:title.lines().find(|line|!line.trim().is_empty()).unwrap_or("").trim().into(),seeders:stream_seeders(s,&description),episode_target:None,requires_file_selection:false,torrent_file_index:s.get("fileIdx").and_then(Value::as_u64).map(|index|index as usize),source:if name.is_empty(){host}else{format!("{name} · {host}")}})
         }).collect::<Vec<_>>();
         if uses_explicit_season_ids(base) {
             for batch in out.chunks_mut(3) {
@@ -815,6 +822,7 @@ pub async fn streams(
             source: provider.into(),
             torrent_file_index: None,
             requires_file_selection: false,
+            title:String::new(),seeders:None,episode_target:None,
         });
     }
     if out.is_empty() {
@@ -822,6 +830,13 @@ pub async fn streams(
     } else {
         Ok(out)
     }
+}
+
+fn stream_seeders(item:&Value,label:&str)->Option<u64> {
+    for key in ["seeders","seeds"] {if let Some(n)=item.get(key).and_then(Value::as_u64){return Some(n);}}
+    static SEEDS:OnceLock<Regex>=OnceLock::new();
+    let re=SEEDS.get_or_init(||Regex::new(r"(?i)(?:👥|\bseeders?\s*[:=]?)\s*(\d+(?:[.,]\d{3})*)(?:\b|\s)").unwrap());
+    re.captures(label).and_then(|c|c[1].replace([',','.'],"").parse().ok())
 }
 
 fn stream_notice(item:&Value)->bool {

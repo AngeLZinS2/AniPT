@@ -83,16 +83,17 @@ flowchart LR
 
 - **Identidade do episódio:** a correspondência entre obra, temporada e IDs das fontes é conferida antes da reprodução. Na Fenix, continuações usam a conversão explícita por episódio para série IMDb, temporada e episódio; respostas com coordenadas conflitantes são descartadas. Playlists HLS sem extensão são identificadas pela resposta da mídia. A temporada mostrada na interface é separada do índice interno da fonte.
 - **Persistência local:** histórico e favoritos usam SQLite; perfil e recursos da interface usam armazenamento local. Não há cadastro obrigatório.
+- **Escolha automática:** torrents são priorizados pelos seeds informados; o episódio é identificado nos arquivos do pacote. Opções ambíguas ou com falha dão lugar à próxima fonte.
 - **Streaming interno:** torrents são servidos por loopback, com token por processo e suporte a requisições Range para navegação no vídeo. Upload está desativado na compilação.
 - **Uso de recursos:** o mosaico inicial utiliza um único decodificador; sair da apresentação remove vídeo, máscaras e eventos.
 - **Backup delimitado:** o JSON exporta a biblioteca pessoal e as sinopses. URLs privadas das fontes precisam ser reinstaladas e não acompanham o backup.
 
 ## Instalar e experimentar
 
-Versão desktop disponível: **0.3.4**, para **Windows 64 bits**.
+Versão desktop disponível: **0.3.5**, para **Windows 64 bits**.
 
-- **[Instalador Windows](http://173.212.251.120:8085/downloads/AniBR-0.3.4-Setup.exe)** — instalação assistida.
-- **[Versão portátil ZIP](http://173.212.251.120:8085/downloads/AniBR-0.3.4-Portable.zip)** — extraia a pasta e execute `AniBR.exe`.
+- **[Instalador Windows](http://173.212.251.120:8085/downloads/AniBR-0.3.5-Setup.exe)** — instalação assistida.
+- **[Versão portátil ZIP](http://173.212.251.120:8085/downloads/AniBR-0.3.5-Portable.zip)** — extraia a pasta e execute `AniBR.exe`.
 - **[SHA-256 dos arquivos](http://173.212.251.120:8085/downloads/SHA256SUMS.txt)** — conferência dos downloads.
 
 Ambas as versões utilizam WebView2 e os dados locais do perfil do Windows. O portátil dispensa a instalação do aplicativo, mas seus dados não ficam isolados dentro do ZIP.
@@ -124,7 +125,7 @@ npm run build
 
 Os instaladores são gerados em `src-tauri/target/release/bundle/` e o executável em `src-tauri/target/release/anipt.exe`. O nome visível é AniBR; o identificador `br.com.anipt.desktop` preserva a continuidade dos dados locais.
 
-A versão desktop 0.3.4 foi validada com **49 testes de frontend**, **35 testes Rust aprovados** e compilação dos pacotes Windows. Cinco testes Rust que dependem de rede são opcionais e ficam ignorados na execução padrão. A disponibilidade dos serviços externos continua dependendo da rede e das fontes.
+A versão desktop 0.3.5 foi validada com **59 testes de frontend**, **36 testes Rust aprovados** e compilação dos pacotes Windows. Cinco testes Rust que dependem de rede são opcionais e ficam ignorados na execução padrão. A disponibilidade dos serviços externos continua dependendo da rede e das fontes.
 
 ## Usar a CLI AniBR
 

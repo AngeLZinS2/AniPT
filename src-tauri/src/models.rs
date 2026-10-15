@@ -68,6 +68,9 @@ pub struct Episode {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TorrentEpisodeTarget {pub season:u64,pub episode:u64}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StreamSource {
     pub url: String,
     pub quality: String,
@@ -80,6 +83,12 @@ pub struct StreamSource {
     pub torrent_file_index: Option<usize>,
     #[serde(default)]
     pub requires_file_selection: bool,
+    #[serde(default)]
+    pub title: String,
+    #[serde(default)]
+    pub seeders: Option<u64>,
+    #[serde(default)]
+    pub episode_target: Option<TorrentEpisodeTarget>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
