@@ -81,7 +81,7 @@ flowchart LR
 
 ### Decisões de implementação
 
-- **Identidade do episódio:** a correspondência entre obra, temporada e IDs das fontes é conferida antes da reprodução, para reduzir associações incorretas.
+- **Identidade do episódio:** a correspondência entre obra, temporada e IDs das fontes é conferida antes da reprodução. Opções cujo rótulo identifica outra parte relacionada no catálogo são descartadas. A temporada mostrada na interface é separada do índice interno da fonte.
 - **Persistência local:** histórico e favoritos usam SQLite; perfil e recursos da interface usam armazenamento local. Não há cadastro obrigatório.
 - **Streaming interno:** torrents são servidos por loopback, com token por processo e suporte a requisições Range para navegação no vídeo. Upload está desativado na compilação.
 - **Uso de recursos:** o mosaico inicial utiliza um único decodificador; sair da apresentação remove vídeo, máscaras e eventos.
@@ -89,10 +89,10 @@ flowchart LR
 
 ## Instalar e experimentar
 
-Versão desktop disponível: **0.3.1**, para **Windows 64 bits**.
+Versão desktop disponível: **0.3.2**, para **Windows 64 bits**.
 
-- **[Instalador Windows](http://173.212.251.120:8085/downloads/AniBR-0.3.1-Setup.exe)** — instalação assistida.
-- **[Versão portátil ZIP](http://173.212.251.120:8085/downloads/AniBR-0.3.1-Portable.zip)** — extraia a pasta e execute `AniBR.exe`.
+- **[Instalador Windows](http://173.212.251.120:8085/downloads/AniBR-0.3.2-Setup.exe)** — instalação assistida.
+- **[Versão portátil ZIP](http://173.212.251.120:8085/downloads/AniBR-0.3.2-Portable.zip)** — extraia a pasta e execute `AniBR.exe`.
 - **[SHA-256 dos arquivos](http://173.212.251.120:8085/downloads/SHA256SUMS.txt)** — conferência dos downloads.
 
 Ambas as versões utilizam WebView2 e os dados locais do perfil do Windows. O portátil dispensa a instalação do aplicativo, mas seus dados não ficam isolados dentro do ZIP.
@@ -124,7 +124,7 @@ npm run build
 
 Os instaladores são gerados em `src-tauri/target/release/bundle/` e o executável em `src-tauri/target/release/anipt.exe`. O nome visível é AniBR; o identificador `br.com.anipt.desktop` preserva a continuidade dos dados locais.
 
-A versão desktop 0.3.1 foi validada com **42 testes de frontend**, **20 testes Rust aprovados** e compilação dos pacotes Windows. Dois testes Rust que dependem de rede são opcionais e ficam ignorados na execução padrão. A disponibilidade dos serviços externos continua dependendo da rede e das fontes.
+A versão desktop 0.3.2 foi validada com **47 testes de frontend**, **24 testes Rust aprovados** e compilação dos pacotes Windows. Três testes Rust que dependem de rede são opcionais e ficam ignorados na execução padrão. A disponibilidade dos serviços externos continua dependendo da rede e das fontes.
 
 ## Usar a CLI AniBR
 

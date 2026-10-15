@@ -5,9 +5,10 @@ import {releasedLimit,type ReleaseInfo} from './episode-release';
 import {playbackSettings,readStored} from './personal';
 import {normalizeQuality} from './quality';
 import {translationSegments,translatedSegment} from './translation';
+import {explicitSeasonNumber,numberSeasonFamily} from './season-number';
 import {confirmedSchedules,type Schedule} from './release-feed';
 
-export type Anime = {id:string;title:string;subtitle:string;description:string;year:number;rating:number;episodes:number;watched?:number;progress?:number;favorite?:boolean;color:string;tags:string[];provider?:string;coverUrl?:string;bannerUrl?:string;latestEpisode?:number;airedAt?:number;confirmedRelease?:boolean;resume?:ProgressEntry;status?:string;trailer?:{id:string;site:string;thumbnail?:string}|null};
+export type Anime = {id:string;title:string;subtitle:string;description:string;year:number;rating:number;episodes:number;watched?:number;progress?:number;favorite?:boolean;color:string;tags:string[];provider?:string;coverUrl?:string;bannerUrl?:string;latestEpisode?:number;airedAt?:number;confirmedRelease?:boolean;resume?:ProgressEntry;status?:string;seasonNumber?:number;trailer?:{id:string;site:string;thumbnail?:string}|null};
 type BackendAnime={id:string;title:string;title_ptbr?:string;cover_url?:string;banner_url?:string;synopsis?:string;genres?:string[];year?:number;total_episodes?:number;provider?:string;available_languages?:string[];latest_episode?:number;aired_at?:number;confirmed_release?:boolean;rating?:number;status?:string;trailer?:{id:string;site:string;thumbnail?:string}|null};
 export type Episode={id:string;anime_id:string;season:number;number:number;title:string;duration:number;thumbnail:string};
 export type StreamSource={url:string;quality:string;language:string;format:string;is_hls:boolean;source:string;torrent_file_index?:number|null};
@@ -18,7 +19,7 @@ declare global {interface Window{__TAURI_INTERNALS__?:unknown}}
 type Media={id:number;title:{english?:string;romaji?:string};seasonYear?:number;averageScore?:number;episodes?:number;description?:string;genres?:string[];coverImage?:{extraLarge?:string;large?:string};bannerImage?:string;status?:string;isAdult?:boolean;trailer?:{id:string;site:string;thumbnail?:string}|null};
 const isDesktop=()=>!!window.__TAURI_INTERNALS__;
 const invoke=<T>(command:string,args:Record<string,unknown>={})=>tauriInvoke<T>(command,args);
-const normalize=(a:BackendAnime):Anime=>({id:a.id,title:a.title_ptbr||a.title,subtitle:a.title,description:a.synopsis||'Sinopse ainda não disponível.',year:a.year||0,rating:a.rating||0,episodes:a.total_episodes||0,color:'#8955ff',tags:[...(a.genres||[]),...(a.available_languages||[])],provider:a.provider||'multi',coverUrl:a.cover_url,bannerUrl:a.banner_url,latestEpisode:a.latest_episode,airedAt:a.aired_at,confirmedRelease:a.confirmed_release,status:a.status});
+const normalize=(a:BackendAnime):Anime=>({id:a.id,title:a.title_ptbr||a.title,subtitle:a.title,description:a.synopsis||'Sinopse ainda não disponível.',year:a.year||0,rating:a.rating||0,episodes:a.total_episodes||0,color:'#8955ff',tags:[...(a.genres||[]),...(a.available_languages||[])],seasonNumber:explicitSeasonNumber(a.title_ptbr,a.title),provider:a.provider||'multi',coverUrl:a.cover_url,bannerUrl:a.banner_url,latestEpisode:a.latest_episode,airedAt:a.aired_at,confirmedRelease:a.confirmed_release,status:a.status});
 const fromMedia=(m:Media):Anime=>({...normalize({id:`anilist:${m.id}`,title:m.title.english||m.title.romaji||'Título não informado',synopsis:(m.description||'').replace(/<[^>]*>/g,' ').replace(/&amp;/g,'&'),year:m.seasonYear,rating:(m.averageScore||0)/10,total_episodes:m.episodes,genres:m.genres,cover_url:m.coverImage?.extraLarge||m.coverImage?.large,banner_url:m.bannerImage,provider:'addon:https://anime-kitsu.strem.fun|anime'}),subtitle:m.title.romaji||m.title.english||'',status:m.status,trailer:m.trailer});
 const cache=new Map<string,{expires:number;value:unknown}>(),pending=new Map<string,Promise<unknown>>();
 async function cached<T>(key:string,fetcher:()=>Promise<T>,ttl=300000):Promise<T>{
@@ -107,7 +108,7 @@ export const api={
           entries.set(edge.node.id,edge.node);if(!visited.has(edge.node.id))queue.push(edge.node.id);
         }
       }
-      return [...entries.values()].filter(entry=>['TV','TV_SHORT','ONA'].includes(entry.format)&&entry.status!=='NOT_YET_RELEASED').sort((a,b)=>(a.seasonYear||0)-(b.seasonYear||0)||a.id-b.id).map(fromMedia);
+      return numberSeasonFamily([...entries.values()].filter(entry=>['TV','TV_SHORT','ONA'].includes(entry.format)&&entry.status!=='NOT_YET_RELEASED').sort((a,b)=>(a.seasonYear||0)-(b.seasonYear||0)||a.id-b.id).map(fromMedia));
     },300000);
   },
   async streamReport(anime:Anime,episode:Episode,language='legendado'):Promise<StreamResolution>{if(!isDesktop())throw new Error('Abra o AniBR desktop para usar as fontes de reprodução.');if(episode.anime_id!==anime.id)throw new Error('Este episódio pertence a outra temporada.');const addons=await api.listAddons();return cached(`streams:${JSON.stringify(addons)}:${anime.id}:${anime.provider}:${episode.id}:${language}`,()=>invoke<StreamResolution>('get_streams',{animeId:anime.id,episodeId:episode.id,language,provider:anime.provider||'multi'}),60000)},

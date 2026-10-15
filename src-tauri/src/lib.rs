@@ -3,6 +3,7 @@ mod database;
 mod models;
 mod player;
 mod provider;
+mod stream_identity;
 mod torrent;
 mod translation;
 use database::Database;
@@ -83,6 +84,7 @@ async fn get_streams(
     s: State<'_, AppState>,
 ) -> Result<StreamResolution, String> {
     provider::validate_episode_identity(&anime_id,&episode_id).await?;
+    let identity=provider::stream_season_identity(&anime_id).await?;
     let kind = provider.rsplit_once('|').map(|(_, kind)| kind).unwrap_or("anime");
     let mut addons = s.config.read().map_err(|_| "config lock poisoned".to_string())?.addons.clone();
     if let Some(spec)=provider.strip_prefix("addon:"){let base=spec.rsplit_once('|').map(|(base,_)|base).unwrap_or(spec);if !addons.iter().any(|item|item==base){addons.push(base.into());}}
@@ -94,14 +96,14 @@ async fn get_streams(
     }
     for batch in addons.chunks(4) {
         let tasks=batch.iter().map(|base|{
-            let base=base.clone();let preferred=kind.to_string();let episode=episode_id.clone();let language=language.clone();
+            let base=base.clone();let preferred=kind.to_string();let episode=episode_id.clone();let language=language.clone();let identity=identity.clone();
             tauri::async_runtime::spawn(async move {
                 let host=reqwest::Url::parse(&base).ok().and_then(|url|url.host_str().map(str::to_string)).unwrap_or("Fonte externa".into());
                 let support=provider::episode_support(&base,&preferred,&episode).await;
                 let resource_kind=if matches!(support,Ok(true)) {Some(preferred)} else if preferred=="anime"&&matches!(provider::episode_support(&base,"series",&episode).await,Ok(true)) {Some("series".into())} else {None};
                 let Some(resource_kind)=resource_kind else {return (Vec::new(),SourceDiagnostic{source:host,status:support.err().unwrap_or("Tipo de conteúdo não aceito por esta fonte".into())});};
                 match provider::streams(&episode,&language,&format!("addon:{base}|{resource_kind}")).await {
-                    Ok(streams)=>{let torrents=streams.iter().filter(|s|s.format=="Torrent").count();let status=if streams.is_empty(){"Respondeu sem opções para este episódio".into()}else{format!("{} vídeos diretos · {} torrents",streams.len()-torrents,torrents)};(streams,SourceDiagnostic{source:host,status})},
+                    Ok(mut streams)=>{let rejected=stream_identity::filter_streams(&mut streams,identity.as_ref());let torrents=streams.iter().filter(|s|s.format=="Torrent").count();let mut status=if streams.is_empty(){"Respondeu sem opções compatíveis para este episódio".into()}else{format!("{} vídeos diretos · {} torrents",streams.len()-torrents,torrents)};if rejected>0{status.push_str(&format!(" · {rejected} opções de outra temporada descartadas"));}(streams,SourceDiagnostic{source:host,status})},
                     Err(error)=>{let status=if error.contains("aviso de bloqueio"){"Bloqueada por limite de requisições; vídeo de aviso descartado".into()}else{error};(Vec::new(),SourceDiagnostic{source:host,status})}
                 }
             })

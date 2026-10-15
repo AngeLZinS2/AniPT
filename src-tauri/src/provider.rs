@@ -115,6 +115,25 @@ mod availability_tests {
         });
     }
     #[test]
+    #[ignore = "live source; set ANIBR_TEST_ADDON and run explicitly"]
+    fn live_black_clover_sequel_excludes_prequel_video_links() {
+        tauri::async_runtime::block_on(async {
+            let base=std::env::var("ANIBR_TEST_ADDON").expect("Defina ANIBR_TEST_ADDON para testar uma fonte instalada");
+            let provider=format!("addon:{base}|anime");
+            validate_episode_identity("anilist:195604","kitsu:50024:1").await.unwrap();
+            let identity=stream_season_identity("anilist:195604").await.unwrap();
+            let previous=streams("kitsu:13209:1","dublado",&provider).await.unwrap();
+            let mut current=streams("kitsu:50024:1","dublado",&provider).await.unwrap();
+            let before=current.len();
+            let rejected=crate::stream_identity::filter_streams(&mut current,identity.as_ref());
+            let key=|stream:&StreamSource|reqwest::Url::parse(&stream.url).ok().map(|url|format!("{}{}",url.origin().ascii_serialization(),url.path()));
+            let previous_keys=previous.iter().filter_map(key).collect::<Vec<_>>();
+            assert!(!current.is_empty(),"A fonte não forneceu opções corretas da segunda temporada");
+            assert!(current.iter().filter_map(key).all(|key|!previous_keys.contains(&key)),"A fonte ainda mistura os mesmos links da primeira temporada");
+            println!("Segunda temporada: {before} opções recebidas, {rejected} conflitantes descartadas, {} preservadas",current.len());
+        });
+    }
+    #[test]
     fn rejects_error_documents_even_with_video_content_type() {
         assert!(!media_bytes(b"<!doctype html><h1>Offline</h1>","video/mp4"));
         assert!(!media_bytes(b"{\"error\":\"not found\"}","video/mp4"));
@@ -492,6 +511,17 @@ fn mapped_id(mappings:&Value,site:&str)->Option<String>{
         if attrs.get("externalSite")?.as_str()?!=site{return None;}
         attrs.get("externalId").and_then(|value|value.as_str().map(str::to_string).or_else(||value.as_i64().map(|id|id.to_string())))
     })
+}
+pub async fn stream_season_identity(anime_id:&str)->Result<Option<crate::stream_identity::SeasonIdentity>,String>{
+    let Some(id)=anime_id.strip_prefix("anilist:") else {return Ok(None);};
+    let id=id.parse::<i64>().map_err(|_|"ID AniList inválido")?;
+    static IDENTITIES:OnceLock<Mutex<HashMap<i64,(std::time::Instant,crate::stream_identity::SeasonIdentity)>>>=OnceLock::new();
+    let cache=IDENTITIES.get_or_init(||Mutex::new(HashMap::new()));
+    if let Some(identity)=cache.lock().ok().and_then(|items|items.get(&id).filter(|(time,_)|time.elapsed().as_secs()<3600).map(|(_,value)|value.clone())){return Ok(Some(identity));}
+    let data=query_anilist("query StreamSeasonIdentity($id:Int!){Media(id:$id,type:ANIME){id title{english romaji native} relations{edges{relationType node{id type title{english romaji native}}}}}}",serde_json::json!({"id":id})).await.map_err(|_|"Não foi possível conferir a identificação das fontes no AniList. Verifique a conexão e tente novamente.")?;
+    let identity=crate::stream_identity::SeasonIdentity::from_media(&data["Media"])?;
+    if let Ok(mut items)=cache.lock(){items.insert(id,(std::time::Instant::now(),identity.clone()));}
+    Ok(Some(identity))
 }
 pub async fn validate_season_mapping(anime_id:&str,canonical_id:&str)->Result<(),String>{
     static VERIFIED:OnceLock<Mutex<HashMap<String,std::time::Instant>>>=OnceLock::new();
