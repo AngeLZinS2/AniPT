@@ -1,0 +1,10 @@
+{
+  "version": "1.3.1",
+  "name": "abslink",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ThaUnknown/abslink.git"
+  },
+  "author": null,
+  "license": "Apache-2.0"
+}

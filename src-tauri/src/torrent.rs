@@ -36,7 +36,7 @@ async fn engine()->Result<Arc<Engine>,String>{
         let listener=tokio::net::TcpListener::bind("127.0.0.1:0").await.map_err(|_|"Não foi possível abrir streaming local")?;
         let port=listener.local_addr().map_err(|_|"Porta local indisponível")?.port();
         let engine=Arc::new(Engine{api:Api::new(session,None),token:uuid::Uuid::new_v4().simple().to_string(),port,active:Mutex::new(None),folder,operations:tokio::sync::Mutex::new(())});
-        let app=Router::new().route("/{token}/{id}/{file}",get(stream_file)).with_state(engine.clone());
+        let app=Router::new().route("/{token}/{id}/{file}",get(stream_file).options(stream_preflight)).with_state(engine.clone());
         tauri::async_runtime::spawn(async move{let _=axum::serve(listener,app).await;});
         Ok::<_,String>(engine)
     }).await.cloned()
@@ -138,8 +138,28 @@ fn byte_range(header:Option<&str>,length:u64)->Result<(u64,u64,bool),()>{
     let start=start.parse::<u64>().map_err(|_|())?;let end=if end.is_empty(){length-1}else{end.parse::<u64>().map_err(|_|())?.min(length-1)};
     if start>=length||end<start{return Err(());}Ok((start,end,true))
 }
+fn subtitle_origin(origin:&str)->bool{
+    if origin=="tauri://localhost"{return true;}
+    reqwest::Url::parse(origin).ok().is_some_and(|url|matches!(url.scheme(),"http"|"https")&&matches!(url.host_str(),Some("tauri.localhost"|"localhost"|"127.0.0.1"))&&url.username().is_empty()&&url.password().is_none()&&url.path()=="/"&&url.query().is_none()&&url.fragment().is_none())
+}
+fn stream_cors(response:&mut Response,headers:&HeaderMap){
+    if let Some(origin)=headers.get("origin").filter(|v|v.to_str().ok().is_some_and(subtitle_origin)){
+        response.headers_mut().insert("access-control-allow-origin",origin.clone());
+        response.headers_mut().insert("vary","Origin".parse().unwrap());
+        response.headers_mut().insert("access-control-expose-headers","Content-Range, Content-Length, Accept-Ranges".parse().unwrap());
+    }
+}
+async fn stream_preflight(State(engine):State<Arc<Engine>>,Path((token,id,file)):Path<(String,usize,usize)>,headers:HeaderMap)->Response{
+    if token!=engine.token||engine.active.lock().ok().and_then(|active|*active)!=Some((id,file)){return StatusCode::NOT_FOUND.into_response();}
+    if !headers.get("origin").and_then(|v|v.to_str().ok()).is_some_and(subtitle_origin){return StatusCode::FORBIDDEN.into_response();}
+    let mut response=StatusCode::NO_CONTENT.into_response();stream_cors(&mut response,&headers);
+    response.headers_mut().insert("access-control-allow-methods","GET, HEAD, OPTIONS".parse().unwrap());
+    response.headers_mut().insert("access-control-allow-headers","Range".parse().unwrap());
+    response.headers_mut().insert("access-control-allow-private-network","true".parse().unwrap());response
+}
 async fn stream_file(State(engine):State<Arc<Engine>>,Path((token,id,file)):Path<(String,usize,usize)>,headers:HeaderMap)->Response{
     if token!=engine.token||engine.active.lock().ok().and_then(|active|*active)!=Some((id,file)){return StatusCode::NOT_FOUND.into_response();}
+    if headers.get("origin").is_some_and(|v|!v.to_str().ok().is_some_and(subtitle_origin)){return StatusCode::FORBIDDEN.into_response();}
     let Ok(mut stream)=engine.api.api_stream(id.into(),file).await else{return StatusCode::NOT_FOUND.into_response();};
     let length=stream.len();let Ok((start,end,partial))=byte_range(headers.get("range").and_then(|v|v.to_str().ok()),length)else{return (StatusCode::RANGE_NOT_SATISFIABLE,[("Content-Range",format!("bytes */{length}"))]).into_response();};
     if stream.seek(SeekFrom::Start(start)).await.is_err(){return StatusCode::INTERNAL_SERVER_ERROR.into_response();}
@@ -147,7 +167,7 @@ async fn stream_file(State(engine):State<Arc<Engine>>,Path((token,id,file)):Path
     let mut response=Response::new(body);*response.status_mut()=if partial{StatusCode::PARTIAL_CONTENT}else{StatusCode::OK};
     let mime=engine.api.torrent_file_mime_type(id.into(),file).unwrap_or("application/octet-stream");
     for (key,value) in [("content-type",mime.to_string()),("accept-ranges","bytes".into()),("content-length",(end-start+1).to_string()),("cache-control","no-store".into())]{if let Ok(value)=value.parse(){response.headers_mut().insert(key,value);}}
-    if partial{response.headers_mut().insert("content-range",format!("bytes {start}-{end}/{length}").parse().unwrap());}response
+    if partial{response.headers_mut().insert("content-range",format!("bytes {start}-{end}/{length}").parse().unwrap());}stream_cors(&mut response,&headers);response
 }
 #[cfg(test)]
 mod tests{
@@ -168,6 +188,7 @@ mod tests{
         });
     }
     #[test]fn ranges_support_seek_and_suffix(){assert_eq!(byte_range(Some("bytes=10-19"),100),Ok((10,19,true)));assert_eq!(byte_range(Some("bytes=-5"),100),Ok((95,99,true)));assert!(byte_range(Some("bytes=100-"),100).is_err());assert!(byte_range(Some("bytes=0-1,5-9"),100).is_err());}
+    #[test]fn subtitles_only_allow_local_app_origins(){for origin in ["http://tauri.localhost","https://tauri.localhost","tauri://localhost","http://127.0.0.1:5173","http://localhost:5173"]{assert!(subtitle_origin(origin));}for origin in ["null","https://evil.example","http://localhost.evil.example","http://tauri.localhost@evil.example","file:///C:/private","http://localhost/path"]{assert!(!subtitle_origin(origin));}}
     #[test]fn only_video_inputs(){assert!(video_file("ep01.mp4"));assert!(!video_file("sample.mp4"));assert!(!video_file("setup.exe"));assert!(!valid_torrent_input("file:///C:/private.file"));}
     #[test]fn local_torrent_stream_is_seekable_private_and_stops(){
         let _guard=TRANSFER_TEST_LOCK.lock().unwrap();
@@ -181,6 +202,9 @@ mod tests{
             let playback=start_torrent(id,0).await.unwrap();
             let client=reqwest::Client::builder().timeout(std::time::Duration::from_secs(10)).build().unwrap();
             let response=client.get(&playback.url).header("Range","bytes=17-42").send().await.unwrap();assert_eq!(response.status().as_u16(),206);assert_eq!(response.bytes().await.unwrap().as_ref(),&data[17..43]);
+            let response=client.get(&playback.url).header("Origin","http://tauri.localhost").header("Range","bytes=0-5").send().await.unwrap();assert_eq!(response.headers()["access-control-allow-origin"],"http://tauri.localhost");assert_eq!(response.bytes().await.unwrap().as_ref(),&data[..6]);
+            assert_eq!(client.get(&playback.url).header("Origin","https://evil.example").send().await.unwrap().status().as_u16(),403);
+            let response=client.request(reqwest::Method::OPTIONS,&playback.url).header("Origin","http://tauri.localhost").header("Access-Control-Request-Headers","range").send().await.unwrap();assert_eq!(response.status().as_u16(),204);assert_eq!(response.headers()["access-control-allow-headers"],"Range");
             let response=client.get(&playback.url).header("Range","bytes=-10").send().await.unwrap();assert_eq!(response.bytes().await.unwrap().as_ref(),&data[data.len()-10..]);
             let forbidden=playback.url.replace(&engine.token,"wrong-token");assert_eq!(client.get(forbidden).send().await.unwrap().status().as_u16(),404);
             stop_torrent(id).await.unwrap();assert_eq!(client.get(playback.url).send().await.unwrap().status().as_u16(),404);

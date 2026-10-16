@@ -1,6 +1,6 @@
 [package]
 name = "anipt"
-version = "0.3.5"
+version = "0.3.7"
 description = "AniBR desktop backend"
 authors = ["AniBR contributors"]
 edition = "2021"

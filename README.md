@@ -37,8 +37,9 @@ O site público apresenta as funcionalidades, um vídeo de 30 segundos e os down
 | Episódios | Até 15 por página, busca e imagens com fallback para banner ou capa |
 | Biblioteca pessoal | Favoritos e lista com Quero assistir, Assistindo, Concluído, Pausado e Abandonado |
 | Histórico | Retomada do ponto salvo, edição do progresso e remoção de registros |
-| Player | HLS e vídeo direto, seleção de fontes e qualidades disponíveis, velocidade, atalhos e tela cheia |
-| Torrents | Motor integrado, seleção do arquivo de vídeo, quota e limpeza manual do cache |
+| Player | Vídeo ocupando a tela, controles retráteis, menus de reprodução e painel de fontes com rolagem |
+| Torrents | Motor integrado, identificação automática do episódio, prioridade por seeds entre torrents e escolha manual preservada, quota e limpeza do cache |
+| Legendas | ASS/SSA/UTF-8 embutidas em MKV torrent, PT automático, idioma, desativação, atraso, tamanho e posição |
 | Preferências | Idioma, qualidade, densidade, histórico e próximo episódio automático |
 | Dados locais | Backup JSON de lista, favoritos, progresso e sinopses, com importação por identidade |
 | Agenda | Horários locais e avisos opcionais enquanto o aplicativo está aberto |
@@ -62,7 +63,7 @@ O nome é opcional e fica no dispositivo. Também é possível continuar sem se 
 | CLI e terminal interativo | Go, Cobra, Bubble Tea, Lipgloss e Viper |
 | Persistência | SQLite, configuração YAML e armazenamento local do WebView |
 | Catálogo e identificação | AniList e correspondência de identidade com Kitsu |
-| Reprodução | HTML5 Video, hls.js e WebView2 no Windows |
+| Reprodução | HTML5 Video, hls.js, matroska-subtitles, JASSUB/libass e WebView2 no Windows |
 | Torrents | librqbit, Tokio e servidor local com Axum |
 | Site de apresentação | HTML, CSS e JavaScript; Nginx e Docker Compose na VPS |
 | Vídeo de apresentação | Composição editável em HyperFrames |
@@ -90,10 +91,10 @@ flowchart LR
 
 ## Instalar e experimentar
 
-Versão desktop disponível: **0.3.5**, para **Windows 64 bits**.
+Versão desktop disponível: **0.3.7**, para **Windows 64 bits**.
 
-- **[Instalador Windows](http://173.212.251.120:8085/downloads/AniBR-0.3.5-Setup.exe)** — instalação assistida.
-- **[Versão portátil ZIP](http://173.212.251.120:8085/downloads/AniBR-0.3.5-Portable.zip)** — extraia a pasta e execute `AniBR.exe`.
+- **[Instalador Windows](http://173.212.251.120:8085/downloads/AniBR-0.3.7-Setup.exe)** — instalação assistida.
+- **[Versão portátil ZIP](http://173.212.251.120:8085/downloads/AniBR-0.3.7-Portable.zip)** — extraia a pasta e execute `AniBR.exe`.
 - **[SHA-256 dos arquivos](http://173.212.251.120:8085/downloads/SHA256SUMS.txt)** — conferência dos downloads.
 
 Ambas as versões utilizam WebView2 e os dados locais do perfil do Windows. O portátil dispensa a instalação do aplicativo, mas seus dados não ficam isolados dentro do ZIP.
@@ -125,7 +126,7 @@ npm run build
 
 Os instaladores são gerados em `src-tauri/target/release/bundle/` e o executável em `src-tauri/target/release/anipt.exe`. O nome visível é AniBR; o identificador `br.com.anipt.desktop` preserva a continuidade dos dados locais.
 
-A versão desktop 0.3.5 foi validada com **59 testes de frontend**, **36 testes Rust aprovados** e compilação dos pacotes Windows. Cinco testes Rust que dependem de rede são opcionais e ficam ignorados na execução padrão. A disponibilidade dos serviços externos continua dependendo da rede e das fontes.
+A versão desktop 0.3.7 foi validada com **68 testes de frontend**, **37 testes Rust aprovados** e compilação dos pacotes Windows. Cinco testes Rust que dependem de rede são opcionais e ficam ignorados na execução padrão. A disponibilidade dos serviços externos continua dependendo da rede e das fontes.
 
 ## Usar a CLI AniBR
 
@@ -173,6 +174,8 @@ Metadados de exibição no catálogo não comprovam que um vídeo esteja dispon�
 O código do projeto utiliza a [licença MIT](LICENSE). O botão adaptado do Uiverse mantém sua [atribuição e licença](docs/UIVERSE_LICENSE.md); a fonte Manrope do site acompanha o [aviso OFL](website/dist/assets/Manrope-OFL.txt).
 
 Imagens, obras e trailers pertencem aos respectivos titulares. A licença do código não transfere os direitos dessas mídias. A procedência do mosaico está registrada em [WELCOME_MEDIA_SOURCES.json](docs/WELCOME_MEDIA_SOURCES.json). Projeto independente, sem afiliação oficial com AniList, Kitsu ou os titulares das obras apresentadas.
+
+O player de legendas utiliza JASSUB/libass e matroska-subtitles, com licenças próprias (incluindo LGPL-2.1+ nos componentes WebAssembly). As [licenças e instruções de código-fonte](frontend/public/licenses/LEIA-ME.txt) acompanham o instalador e o portátil.
 
 ## Autor
 

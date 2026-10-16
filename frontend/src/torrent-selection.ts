@@ -1,4 +1,5 @@
 import {preferredQualityIndex,resolutionFromLabel} from './quality';
+import {serverKind} from './server-groups';
 
 type TorrentFile={index:number;name:string;bytes?:number};
 type Source={format:string;quality:string;language:string;title?:string;source?:string;seeders?:number|null};
@@ -18,11 +19,14 @@ export function rankedSourceIndices(sources:Source[],language:string,quality:str
     return audio===language||!['dublado','legendado'].includes(audio);
   });
   const pool=eligible.length?eligible:sources.map((source,index)=>({source,index}));
-  const preferred=preferredQualityIndex(pool.map(({source})=>resolutionFromLabel(source.quality)),quality);
-  const prefIndex=pool[preferred]?.index;
+  const preferredByType=new Map<string,number|undefined>();
+  for(const kind of ['direct','torrent']){const subset=pool.filter(({source})=>serverKind(source)===kind);const preferred=preferredQualityIndex(subset.map(({source})=>resolutionFromLabel(source.quality)),quality);preferredByType.set(kind,subset[preferred]?.index);}
   return [...pool].sort((a,b)=>{
-    const seedA=a.source.format==='Torrent'&&Number.isFinite(a.source.seeders)&&Number(a.source.seeders)>0?Number(a.source.seeders):-1;
-    const seedB=b.source.format==='Torrent'&&Number.isFinite(b.source.seeders)&&Number(b.source.seeders)>0?Number(b.source.seeders):-1;
+    const kindA=serverKind(a.source),kindB=serverKind(b.source);
+    if(kindA!==kindB)return kindA==='direct'?-1:1;
+    const prefIndex=preferredByType.get(kindA);
+    const seedA=kindA==='torrent'&&Number.isFinite(a.source.seeders)&&Number(a.source.seeders)>0?Number(a.source.seeders):-1;
+    const seedB=kindB==='torrent'&&Number.isFinite(b.source.seeders)&&Number(b.source.seeders)>0?Number(b.source.seeders):-1;
     if(seedA!==seedB)return seedB-seedA;
     if(a.index===b.index)return 0;
     if(a.index===prefIndex)return -1;if(b.index===prefIndex)return 1;
@@ -65,4 +69,4 @@ export function resolveTorrentEpisode(files:TorrentFile[],target:Target):{index?
   return {index:scores[0].index,reason:'matched'};
 }
 
-export function nextSourceIndex(order:number[],attempted:Set<number>):number|undefined{return order.find(index=>!attempted.has(index));}
+export function nextSourceIndex(order:number[],attempted:Set<number>,automatic=true):number|undefined{return automatic?order.find(index=>!attempted.has(index)):undefined;}

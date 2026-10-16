@@ -9,6 +9,9 @@ import {normalizeQuality, preferredQualityIndex, qualityLabel, resolutionFromDim
 import {catalogForm} from './catalog-view';
 import {filtersFromForm,type CatalogFilters} from './catalog';
 import {serverKey} from './playback';
+import {playerControls} from './player-controls';
+import {embeddedSubtitles} from './embedded-subtitles';
+import {subtitleLabel} from './subtitle-types';
 import {resolveTorrentEpisode,rankedSourceIndices,streamDisplayTitle,nextSourceIndex} from './torrent-selection';
 import {displaySeasonNumber} from './season-number';
 import {groupServers} from './server-groups';
@@ -242,7 +245,7 @@ async function openPlayer(episodeNumber:number,season?:number){
   const diagnosticMarkup=`<details class="source-diagnostics"><summary>${sourceDiagnostics.length} fontes consultadas</summary>${sourceDiagnostics.map(item=>`<p><b>${esc(item.source)}</b><span>${esc(item.status)}</span></p>`).join('')}</details>`;
   if(!streams.length){showSourceRequired(episode.number,episode.season);const section=document.querySelector('.source-required section');if(section){section.querySelector('h2')!.textContent='Nenhuma fonte retornou vídeo ou torrent compatível';section.querySelector('p')!.textContent='Veja abaixo o resultado das fontes. Vídeos de aviso e opções identificadas como outra temporada foram descartados.';section.insertAdjacentHTML('beforeend',diagnosticMarkup)}return}
   let previous=currentEpisodes.filter(e=>e.number<episode.number).at(-1),next=currentEpisodes.find(e=>e.number>episode.number);
-  const serverButtons=groupServers(streams).map(group=>`<h4 class="server-group-heading">${esc(group.label)}<span>${group.items.length}</span></h4>${group.items.map(({source,index:i})=>`<button class="${i===0?'active':''}" data-stream="${i}"><span>▷ ${esc(streamDisplayTitle(source,anime.title))}<small class="source-identity">${esc(qualityLabel(resolutionFromLabel(source.quality)))} · ${esc(source.format)}${source.seeders!=null?` · ${source.seeders} seeds`:""} · ${esc(source.source)}</small></span><em>${esc(source.language||'Idioma não informado')}</em></button>`).join('')}`).join('');
+  const serverButtons=groupServers(streams).map(group=>`<h4 class="server-group-heading" data-source-kind="${group.kind}">${esc(group.label)}<span>${group.items.length}</span></h4>${group.items.map(({source,index:i})=>`<button class="${i===0?'active':''}" data-stream="${i}" data-source-kind="${group.kind}"><span><strong class="server-title" title="${esc(streamDisplayTitle(source,anime.title))}">▷ ${esc(streamDisplayTitle(source,anime.title))}</strong><small class="source-identity">${esc(qualityLabel(resolutionFromLabel(source.quality)))} · ${esc(source.format)}${source.seeders!=null?` · ${source.seeders} seeds`:""} · ${esc(source.source)}</small></span><em>${esc(source.language||'Idioma não informado')}</em></button>`).join('')}`).join('');
   const episodeButtons=currentEpisodes.map(ep=>`<button class="${ep.number===episode.number?'active':''}" data-jump-episode="${ep.number}">${ep.number}</button>`).join('');
   const overlay=document.createElement('div');overlay.className='player-overlay';overlay.innerHTML=`<div class="player-shell"><header><button class="player-close" aria-label="Fechar">←</button><div><b>${esc(selected.title)}</b><small>Temp. ${displaySeasonNumber(anime,episode.season)} · Ep. ${episode.number} · ${esc(episode.title||`Episódio ${episode.number}`)}</small></div><span class="player-status">Preparando servidor…</span></header><div class="video-stage"><video controls playsinline preload="metadata"></video><div class="player-loading"><i></i><span>Preparando episódio</span></div></div><section class="server-panel"><header><div><h3>Servidores</h3><span>${streams.length} ${streams.length===1?'opção disponível':'opções disponíveis'}</span></div><button class="report-source">Ajuda com a reprodução</button></header><div class="server-help"><b>ⓘ Problema neste player?</b><span>Se esta fonte falhar, escolha outro servidor abaixo sem sair do AniBR.</span></div><div class="server-list">${serverButtons}</div></section><section class="player-episodes"><header><h3>Episódios</h3><span>${currentEpisodes.length} eps.</span></header><div>${episodeButtons}</div></section><footer class="episode-navigation"><button class="previous-episode" ${previous?'':'disabled'}>‹ Episódio anterior</button><button class="all-episodes">☷ Todos os episódios</button><button class="next-episode" ${next?'':'disabled'}>Próximo episódio ›</button></footer></div>`;document.body.appendChild(overlay);
   const video=overlay.querySelector('video')!, loading=overlay.querySelector<HTMLElement>('.player-loading')!, status=overlay.querySelector<HTMLElement>('.player-status')!;
@@ -260,39 +263,43 @@ async function openPlayer(episodeNumber:number,season?:number){
   const episodeSelector=document.createElement('label');episodeSelector.className='player-episode-select';episodeSelector.innerHTML='<span>Episódio</span><select aria-label="Escolher episódio"></select>';
   overlay.querySelector('.episode-navigation .all-episodes')!.before(episodeSelector);
   const refreshEpisodeSelector=()=>{const select=episodeSelector.querySelector('select')!;select.innerHTML=currentEpisodes.map(ep=>`<option value="${ep.number}" ${ep.number===episode.number?'selected':''}>Episódio ${ep.number}</option>`).join('');};refreshEpisodeSelector();
-  overlay.querySelector('.server-help > span')!.textContent='O AniBR prioriza torrents com mais seeds e tenta outra fonte quando necessário. Você também pode trocar neste painel.';
+  overlay.querySelector('.server-help > span')!.textContent='O AniBR tenta vídeo direto primeiro e prioriza seeds nos torrents. Se você escolher um servidor, ele mantém sua escolha.';
   overlay.querySelector('.server-help')!.insertAdjacentHTML('afterend',diagnosticMarkup);
   const qualityControl=document.createElement('label');qualityControl.className='player-quality';qualityControl.innerHTML='<span>Qualidade</span><select aria-label="Qualidade do vídeo"></select>';overlay.querySelector('.player-shell > header')!.appendChild(qualityControl);
   const qualitySelect=qualityControl.querySelector('select')!;
   const extra=document.createElement('div');extra.className='player-extra-controls';extra.innerHTML='<label>Velocidade<select aria-label="Velocidade de reprodução"><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>1×</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="1.75">1,75×</option><option value="2">2×</option></select></label><label hidden>Áudio<select aria-label="Faixa de áudio"></select></label><label hidden>Legendas<select aria-label="Faixa de legendas"></select></label><details class="player-shortcuts"><summary>Atalhos</summary><p>Espaço/K: pausar · ←/→: 10 segundos · ↑/↓: volume · M: silenciar · F: tela cheia · Esc: sair</p></details><button class="outline-button retry-stream">Tentar fonte novamente</button>';overlay.querySelector('.server-panel')!.appendChild(extra);
   const speed=extra.querySelector<HTMLSelectElement>('[aria-label="Velocidade de reprodução"]')!;speed.value=String(readStored('anibr-playback-speed',1));if(!speed.value)speed.value='1';video.playbackRate=Number(speed.value);speed.onchange=()=>{video.playbackRate=Number(speed.value);localStorage.setItem('anibr-playback-speed',speed.value)};
   const audio=extra.querySelector<HTMLSelectElement>('[aria-label="Faixa de áudio"]')!,subtitles=extra.querySelector<HTMLSelectElement>('[aria-label="Faixa de legendas"]')!;
+  let embedded:ReturnType<typeof embeddedSubtitles>|undefined;
   const refreshTracks=()=>{
     const audioTracks=hls?.audioTracks||[];audio.parentElement!.hidden=audioTracks.length<2;audio.innerHTML=audioTracks.map((t,i)=>`<option value="${i}">${esc(t.name||t.lang||`Faixa ${i+1}`)}</option>`).join('');if(hls)audio.value=String(hls.audioTrack);
-    const subtitleTracks=hls?.subtitleTracks||Array.from(video.textTracks).map(t=>({name:t.label,lang:t.language}));subtitles.parentElement!.hidden=!subtitleTracks.length;subtitles.innerHTML='<option value="-1">Desativadas</option>'+subtitleTracks.map((t,i)=>`<option value="${i}">${esc(t.name||t.lang||`Legenda ${i+1}`)}</option>`).join('');if(hls)subtitles.value=String(hls.subtitleTrack);
+    subtitles.dataset.embedded=String(!!embedded);
+    if(embedded){const {tracks,selected,status:subtitleStatus}=embedded.state;subtitles.parentElement!.hidden=false;subtitles.disabled=subtitleStatus==='loading';subtitles.innerHTML=`<option value="-1">${subtitleStatus==='loading'?'Lendo legendas do MKV…':subtitleStatus==='error'?'Não foi possível ler as legendas':tracks.length?'Desativadas':'Nenhuma legenda de texto embutida'}</option>`+tracks.map(t=>`<option value="${t.number}">${esc(subtitleLabel(t))}</option>`).join('');subtitles.value=String(selected);return}
+    subtitles.disabled=false;const subtitleTracks=hls?.subtitleTracks||Array.from(video.textTracks).map(t=>({name:t.label,lang:t.language}));subtitles.parentElement!.hidden=!subtitleTracks.length;subtitles.innerHTML='<option value="-1">Desativadas</option>'+subtitleTracks.map((t,i)=>`<option value="${i}">${esc(t.name||t.lang||`Legenda ${i+1}`)}</option>`).join('');if(hls)subtitles.value=String(hls.subtitleTrack);
   };
-  audio.onchange=()=>{if(hls)hls.audioTrack=Number(audio.value)};subtitles.onchange=()=>{if(hls)hls.subtitleTrack=Number(subtitles.value);else Array.from(video.textTracks).forEach((t,i)=>t.mode=i===Number(subtitles.value)?'showing':'disabled')};video.textTracks.addEventListener('addtrack',refreshTracks);
+  audio.onchange=()=>{if(hls)hls.audioTrack=Number(audio.value)};subtitles.onchange=()=>{if(embedded)embedded.select(Number(subtitles.value));else if(hls)hls.subtitleTrack=Number(subtitles.value);else Array.from(video.textTracks).forEach((t,i)=>t.mode=i===Number(subtitles.value)?'showing':'disabled')};video.textTracks.addEventListener('addtrack',refreshTracks);
+  subtitles.addEventListener('anibr:subtitle-settings',event=>embedded?.configure((event as CustomEvent).detail));
   const streamKey=(index:number)=>serverKey(streams[index]);
   let hls:Hls|null=null,lastSaved=-1,closing=false,activeStream=0,ready=false,saveQueue:Promise<void>=Promise.resolve();
   let torrentId:number|undefined,torrentTimer:number|undefined,streamVersion=0,torrentFile:number|undefined,torrentFileBytes=0;
   const playbackOrder=rankedSourceIndices(streams,language,preference);
-  let activeAttempts=new Set<number>();
+  let activeAttempts=new Set<number>(),activeAutomatic=true;
   const torrentInfo=document.createElement('small');torrentInfo.className='torrent-info';torrentInfo.hidden=true;overlay.querySelector('.server-panel')!.prepend(torrentInfo);
-  const stopTorrent=async()=>{if(torrentTimer!==undefined)clearInterval(torrentTimer);torrentTimer=undefined;const id=torrentId;torrentId=undefined;torrentInfo.hidden=true;if(id!==undefined)await api.stopTorrent(id).catch(()=>{})};
+  const stopTorrent=async()=>{embedded?.destroy();embedded=undefined;if(torrentTimer!==undefined)clearInterval(torrentTimer);torrentTimer=undefined;const id=torrentId;torrentId=undefined;torrentInfo.hidden=true;if(id!==undefined)await api.stopTorrent(id).catch(()=>{})};
   let resumeAt=progress&&!progress.completed?progress.timestamp:0;
   const actualQuality=()=>{const w=video.videoWidth,h=video.videoHeight;if(w>=3840&&h>0&&h<2160)return `4K (${w}×${h})`;return qualityLabel(h||resolutionFromLabel(streams[activeStream].quality))};
   const updateStatus=()=>{status.textContent=`Servidor ${activeStream+1} · ${actualQuality()} · ${streams[activeStream].language||'Idioma não informado'}`};
   const save=async(completed=false,force=false)=>{if(!ready||!Number.isFinite(video.currentTime)||video.currentTime<0)return;const second=Math.floor(video.currentTime);if(!force&&!completed&&Math.abs(second-lastSaved)<5)return;lastSaved=second;const entry:ProgressEntry={anime_id:anime.id,anime_title:anime.title,provider:anime.provider||'multi',season:episode.season,episode:episode.number,episode_title:episode.title||`Episódio ${episode.number}`,language:streams[activeStream].language||'Idioma não informado',quality:actualQuality(),timestamp:second,completed,duration:Number.isFinite(video.duration)?Math.floor(video.duration):0,episode_id:episode.id,stream_key:streamKey(activeStream),cover_url:anime.coverUrl||'',banner_url:anime.bannerUrl||''};saveQueue=saveQueue.catch(()=>{}).then(()=>api.saveProgress(entry));try{await saveQueue}catch(error){lastSaved=-1;throw error}};
-  let releaseDialog=()=>{};
-  const close=async()=>{if(closing)return;closing=true;streamVersion++;if(document.fullscreenElement===stage)await document.exitFullscreen().catch(()=>{});await restoreNativeFullscreen();await save(false,true).catch(()=>showToast('Não foi possível salvar o progresso.'));ready=false;hls?.destroy();video.pause();video.removeAttribute('src');video.load();await stopTorrent();releaseDialog();overlay.remove();document.removeEventListener('keydown',playerKeys);document.removeEventListener('fullscreenchange',fullscreenChanged)};
+  let releaseDialog=()=>{},disposeControls=()=>{};
+  const close=async()=>{if(closing)return;closing=true;streamVersion++;disposeControls();if(document.fullscreenElement===stage)await document.exitFullscreen().catch(()=>{});await restoreNativeFullscreen();await save(false,true).catch(()=>showToast('Não foi possível salvar o progresso.'));ready=false;hls?.destroy();video.pause();video.removeAttribute('src');video.load();await stopTorrent();releaseDialog();overlay.remove();document.removeEventListener('keydown',playerKeys);document.removeEventListener('fullscreenchange',fullscreenChanged)};
   releaseDialog=activateDialog(overlay,`${anime.title} — ${episode.title}`,()=>{if(Date.now()-lastFullscreenExit>=300)close()});
   const playerKeys=(event:KeyboardEvent)=>{if(event.ctrlKey||event.altKey||event.metaKey||(event.target as HTMLElement)?.closest('input,select,textarea,button,summary,[contenteditable]'))return;const key=event.key.toLowerCase();if(key==='f'){event.preventDefault();toggleFullscreen()}else if(key===' '||key==='k'){event.preventDefault();video.paused?video.play().catch(()=>{}):video.pause()}else if(key==='arrowright'||key==='arrowleft'){event.preventDefault();video.currentTime=Math.max(0,Math.min(Number.isFinite(video.duration)?video.duration:Infinity,video.currentTime+(key==='arrowright'?10:-10)))}else if(key==='m'){event.preventDefault();video.muted=!video.muted}else if(key==='arrowup'||key==='arrowdown'){event.preventDefault();video.volume=Math.max(0,Math.min(1,video.volume+(key==='arrowup'?.1:-.1)))}};document.addEventListener('keydown',playerKeys);
   episodeSelector.querySelector('select')!.onchange=async e=>{const number=Number((e.target as HTMLSelectElement).value);if(number===episode.number)return;await close();openPlayer(number,episode.season)};
   overlay.querySelector('.player-close')?.addEventListener('click',async()=>{await close();if(page==='home'||page==='history')render()});overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
   const configureSourceQualities=()=>{qualitySelect.innerHTML=streams.map((stream,i)=>`<option value="source:${i}">Servidor ${i+1} · ${esc(qualityLabel(resolutionFromLabel(stream.quality)))}</option>`).join('');qualitySelect.value=`source:${activeStream}`;qualitySelect.disabled=streams.length<2};
-  const attachStream=async(index:number,attempts=new Set<number>()):Promise<void>=>{
+  const attachStream=async(index:number,attempts=new Set<number>(),automatic=true):Promise<void>=>{
     const stream=streams[index];
-    attempts.add(index);activeAttempts=attempts;if(!stream)return;
+    attempts.add(index);activeAttempts=attempts;activeAutomatic=automatic;if(!stream)return;
     const version=++streamVersion;video.dataset.sourceVersion="";
     try{
       await stopTorrent();if(closing||version!==streamVersion)return;
@@ -314,13 +321,14 @@ async function openPlayer(episodeNumber:number,season?:number){
         const match=resolveTorrentEpisode(prepared.files,{...target,title:anime.title,aliases:[anime.subtitle],packageTitle:stream.title||stream.quality});
         const file=prepared.files.find(file=>file.index===match.index);
         if(!file)throw new Error('Esta opção não identificou um arquivo único do episódio solicitado.');
-        const sourceButton=overlay.querySelector<HTMLElement>('[data-stream="'+index+'"] > span');
-        if(sourceButton?.firstChild)sourceButton.firstChild.textContent='▷ '+file.name.split(/[\\/]/).at(-1)+' ';
+        const sourceTitle=overlay.querySelector<HTMLElement>('[data-stream="'+index+'"] .server-title');
+        if(sourceTitle){const name=file.name.split(/[\\/]/).at(-1)||anime.title;sourceTitle.textContent='▷ '+name;sourceTitle.title=name;}
         torrentFile=file.index;torrentFileBytes=file.bytes;
         loading.style.display='grid';loading.querySelector('span')!.textContent='Buffering do torrent…';
         const playback=await api.startTorrent(prepared.id,file.index);
         if(closing||version!==streamVersion){await api.stopTorrent(prepared.id).catch(()=>{});return;}
         video.dataset.sourceVersion=String(version);video.src=playback.url;
+        if(/\.mkv$/i.test(file.name)){embedded=embeddedSubtitles(video,playback.url,file.bytes,refreshTracks);refreshTracks()}
         const updateTorrent=async()=>{if(torrentId!==prepared.id)return;try{const stats=await api.torrentStats(prepared.id);if(closing||version!==streamVersion)return;const bytes=stats.file_progress?.[torrentFile!]||0;const percent=torrentFileBytes?Math.min(100,Math.floor(bytes/torrentFileBytes*100)):0;torrentInfo.textContent=`P2P · cache ${percent}% · upload desativado`;if(stats.error){advanceSource()}}catch{}};
         torrentTimer=window.setInterval(updateTorrent,2000);updateTorrent();
       }else if(stream.is_hls||stream.url.includes('.m3u8')){
@@ -340,27 +348,32 @@ async function openPlayer(episodeNumber:number,season?:number){
           video.dataset.sourceVersion=String(version);engine.loadSource(stream.url);engine.attachMedia(video);
         }else if(video.canPlayType('application/vnd.apple.mpegurl')){video.dataset.sourceVersion=String(version);video.src=stream.url}else throw new Error('HLS não compatível');
       }else {video.dataset.sourceVersion=String(version);video.src=stream.url;}
-    }catch(error){if(closing||version!==streamVersion)return;await stopTorrent();if(closing||version!==streamVersion)return;const next=nextSourceIndex(playbackOrder,attempts);if(next!==undefined){loading.querySelector('span')!.textContent='Tentando outra fonte para este episódio…';return attachStream(next,attempts)}status.textContent='Não foi possível reproduzir';loading.style.display='grid';loading.classList.add('error');loading.querySelector('span')!.textContent='Nenhuma fonte identificou e abriu este episódio. Tente novamente mais tarde.'}
+    }catch(error){if(closing||version!==streamVersion)return;await stopTorrent();if(closing||version!==streamVersion)return;const next=nextSourceIndex(playbackOrder,attempts,automatic);if(next!==undefined){loading.querySelector('span')!.textContent='Tentando outra fonte para este episódio…';return attachStream(next,attempts,true)}showSourceFailure(automatic)}
+  };
+  const showSourceFailure=(automatic:boolean)=>{
+    ready=false;if(video.currentTime>0)resumeAt=video.currentTime;video.dataset.sourceVersion='';video.pause();hls?.stopLoad();
+    loading.style.display='grid';loading.classList.add('error');status.textContent=automatic?'Não foi possível reproduzir':'Servidor escolhido indisponível';
+    loading.querySelector('span')!.textContent=automatic?'As fontes disponíveis não abriram este episódio. Tente novamente mais tarde.':'O servidor escolhido não abriu este episódio. Tente novamente ou escolha outro servidor no painel.';
   };
   const advanceSource=()=>{
     if(closing)return;
-    const next=nextSourceIndex(playbackOrder,activeAttempts);
+    const next=nextSourceIndex(playbackOrder,activeAttempts,activeAutomatic);
     if(next!==undefined){void attachStream(next,activeAttempts);return;}
-    ready=false;void stopTorrent();loading.style.display='grid';loading.classList.add('error');
-    status.textContent='Não foi possível reproduzir';loading.querySelector('span')!.textContent='As fontes disponíveis não abriram este episódio. Tente novamente mais tarde.';
+    void stopTorrent();showSourceFailure(activeAutomatic);
   };
-  qualitySelect.addEventListener('change',()=>{const value=qualitySelect.value;if(value.startsWith('source:'))attachStream(Number(value.slice(7)));else if(hls)hls.currentLevel=value==='auto'?-1:Number(value.slice(6))});
-  extra.querySelector<HTMLButtonElement>('.retry-stream')!.onclick=()=>attachStream(activeStream);
+  qualitySelect.addEventListener('change',()=>{const value=qualitySelect.value;if(value.startsWith('source:'))attachStream(Number(value.slice(7)),new Set(),false);else if(hls)hls.currentLevel=value==='auto'?-1:Number(value.slice(6))});
+  extra.querySelector<HTMLButtonElement>('.retry-stream')!.onclick=()=>attachStream(activeStream,new Set(),activeAutomatic);
   video.addEventListener('loadedmetadata',()=>{if(video.dataset.sourceVersion!==String(streamVersion))return;if(resumeAt>0&&(!Number.isFinite(video.duration)||resumeAt<video.duration-15))video.currentTime=resumeAt;resumeAt=0;ready=true;loading.style.display='none';updateStatus();refreshTracks();if(settings.history)setListStatus(anime,'watching');video.play().catch(()=>{})});
   video.addEventListener('resize',updateStatus);
   video.addEventListener('waiting',()=>{if(torrentId!==undefined&&!closing){loading.style.display='grid';loading.querySelector('span')!.textContent='Buffering do torrent… aguardando peças dos peers';}});
   video.addEventListener('playing',()=>{loading.style.display='none';if(!settings.history)return;const checks=readStored<Record<string,{at:string;text:string}>>('anibr-availability',{});checks[`${animeKey(anime)}:${episode.season}:${episode.number}`]={at:new Date().toISOString(),text:`Reprodução iniciada · ${streams[activeStream].language||'Idioma não informado'}`};localStorage.setItem('anibr-availability',JSON.stringify(checks))});
   video.addEventListener('timeupdate',()=>{save(false).catch(()=>showToast('Não foi possível salvar o progresso.'))});video.addEventListener('pause',()=>save(false,true).catch(()=>showToast('Não foi possível salvar o progresso.')));video.addEventListener('ended',async()=>{await save(true,true).catch(()=>showToast('Não foi possível salvar a conclusão do episódio.'));ready=false;await stopTorrent();status.textContent='Episódio concluído';if(settings.auto_next&&next){await close();await openPlayer(next.number,next.season)}else if(next){const button=document.createElement('button');button.className='purple-button';button.textContent='Assistir próximo episódio';button.onclick=async()=>{await close();openPlayer(next!.number,next!.season)};stage.appendChild(button)}});
   video.addEventListener('error',()=>{if(video.error&&!closing&&video.dataset.sourceVersion===String(streamVersion)){ready=false;advanceSource()}});
-  overlay.querySelectorAll<HTMLElement>('[data-stream]').forEach(button=>button.onclick=()=>attachStream(Number(button.dataset.stream)));
+  overlay.querySelectorAll<HTMLElement>('[data-stream]').forEach(button=>button.onclick=()=>attachStream(Number(button.dataset.stream),new Set(),false));
   overlay.querySelectorAll<HTMLElement>('[data-jump-episode]').forEach(button=>button.onclick=async()=>{await close();openPlayer(Number(button.dataset.jumpEpisode))});
   overlay.querySelector('.previous-episode')?.addEventListener('click',async()=>{if(!previous)return;await close();openPlayer(previous.number)});overlay.querySelector('.next-episode')?.addEventListener('click',async()=>{if(!next)return;await close();openPlayer(next.number)});overlay.querySelector('.all-episodes')?.addEventListener('click',async()=>{await close();navigate('details',anime)});overlay.querySelector('.report-source')?.addEventListener('click',()=>showToast('Selecione outro servidor à direita ou confira suas fontes nas configurações.'));
   if(anime.resume?.episode_id&&currentEpisodes.length===1)api.episodes(anime,episode.season).then(episodes=>{if(closing||request!==playerRequest)return;currentEpisodes=episodes;previous=episodes.filter(e=>e.number<episode.number).at(-1);next=episodes.find(e=>e.number>episode.number);overlay.querySelector<HTMLButtonElement>('.previous-episode')!.disabled=!previous;overlay.querySelector<HTMLButtonElement>('.next-episode')!.disabled=!next;refreshEpisodeSelector()}).catch(()=>{});
+  disposeControls=playerControls(overlay,video);
   attachStream(playbackOrder[0]??0);
 }
 function showSourceRequired(number:number,season:number){

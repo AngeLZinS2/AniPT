@@ -1,0 +1,10 @@
+{
+  "version": "1.0.2",
+  "name": "throughput",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ThaUnknown/throughput.git"
+  },
+  "author": "ThaUnknown",
+  "license": "MIT"
+}

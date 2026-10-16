@@ -5,9 +5,15 @@ export function serverLanguageGroup(language:string):string {
   return 'Idioma não informado';
 }
 
-// Keep original indexes: grouping must not change playback/resume identity.
-export function groupServers<T extends {language:string}>(streams:T[]) {
-  return ['Dublado','Legendado','Idioma não informado'].map(label=>({
-    label,items:streams.map((source,index)=>({source,index})).filter(item=>serverLanguageGroup(item.source.language)===label)
-  })).filter(group=>group.items.length);
+export function serverKind(source:{format?:string}):'torrent'|'direct'{
+  return source.format?.trim().toLowerCase()==='torrent'?'torrent':'direct';
+}
+// Keep original indexes: grouping/filtering must not change playback identity
+// or the independent automatic priority based on reported seeds.
+export function groupServers<T extends {language:string;format?:string}>(streams:T[]) {
+  const types=[{kind:'direct' as const,title:'Vídeo direto'},{kind:'torrent' as const,title:'Torrents'}];
+  return types.flatMap(type=>['Dublado','Legendado','Idioma não informado'].map(language=>({
+    kind:type.kind,label:`${type.title} · ${language}`,
+    items:streams.map((source,index)=>({source,index})).filter(item=>serverKind(item.source)===type.kind&&serverLanguageGroup(item.source.language)===language)
+  })).filter(group=>group.items.length));
 }

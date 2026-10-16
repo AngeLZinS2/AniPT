@@ -1,0 +1,21 @@
+AniBR · Componentes de legendas
+
+JASSUB 2.5.21: https://www.npmjs.com/package/jassub/v/2.5.21
+Código-fonte correspondente: https://github.com/ThaUnknown/jassub/tree/816f1dc536e9bface9bef82f7c214690b81aaee3
+Construção: git clone --recursive https://github.com/ThaUnknown/jassub.git
+              git checkout 816f1dc536e9bface9bef82f7c214690b81aaee3
+              git submodule update --init --recursive
+              ./run-docker-build.ps1
+Os binários WebAssembly distribuídos pelo pacote npm são usados sem alterações.
+Licenças e componentes: JASSUB-WASM-LICENSES.txt e JASSUB-COMPONENTS.txt.
+
+matroska-subtitles 3.3.2 (MIT): https://github.com/mathiasvr/matroska-subtitles
+Adaptação para Worker: window.queueMicrotask é substituído por globalThis.queueMicrotask na etapa de build; sem outras modificações no parser.
+
+O código de integração do AniBR e o lockfile estão no repositório:
+https://github.com/AngeLZinS2/AniPT
+É permitido modificar e substituir estas bibliotecas nos termos de suas licenças.
+As fontes JS, o worker e o WASM podem ser substituídos no projeto antes de
+npm ci --prefix frontend e npm run build. Não há consulta remota de fontes.
+
+O build usa requestVideoFrameCallback nativo do WebView2. O polyfill opcional rvfc-polyfill (GPL-3.0) é excluído do bundle pelo Vite, embora apareça como dependência transitiva no lockfile.

@@ -1,0 +1,10 @@
+{
+  "version": "1.1.1",
+  "name": "lfa-ponyfill",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ThaUnknown/lfa-ponyfill.git"
+  },
+  "author": "ThaUnknown",
+  "license": "MIT"
+}

@@ -29,8 +29,8 @@ test('equally strong matches are ambiguous and require trying another source',()
   assert.equal(resolveTorrentEpisode([{index:0,name:'A S01E01.mkv'},{index:1,name:'B S01E01.mkv'}],target).reason,'ambiguous');
 });
 const source=(seeders,quality='1080p',format='Torrent',language='Idioma não informado')=>({seeders,quality,format,language,title:'[Judas] Kimetsu no Yaiba'});
-test('highest reported seed count wins before quality or original source order',()=>{
-  assert.deepEqual(rankedSourceIndices([source(20,'2160p'),source(989),source(82),source(null,'1080p','MP4')],'legendado','2160p'),[1,2,0,3]);
+test('direct video takes priority and torrents follow in reported seed order',()=>{
+  assert.deepEqual(rankedSourceIndices([source(20,'2160p'),source(989),source(82),source(null,'1080p','MP4')],'legendado','2160p'),[3,1,2,0]);
 });
 test('known opposite audio is excluded when compatible or unknown audio is offered',()=>{
   assert.deepEqual(rankedSourceIndices([source(999,'1080p','Torrent','Dublado'),source(50)],'legendado','auto'),[1]);
@@ -54,4 +54,16 @@ test('automatic fallback visits each source once and stops when all are exhauste
   const order=[2,0,1],attempted=new Set();
   for(const expected of order){const next=nextSourceIndex(order,attempted);assert.equal(next,expected);attempted.add(next);}
   assert.equal(nextSourceIndex(order,attempted),undefined);
+});
+
+test('manual choice never falls back to the torrent with the highest seed count',()=>{
+  const sources=[source(999),source(80),source(null,'1080p','MP4')];
+  const order=rankedSourceIndices(sources,'legendado','auto');assert.deepEqual(order,[2,0,1]);
+  const chosen=1,attempted=new Set([chosen]);
+  assert.equal(nextSourceIndex(order,attempted,false),undefined);
+  assert.deepEqual([...attempted],[1]);
+  assert.equal(nextSourceIndex(order,attempted,true),2);
+});
+test('quality preference is applied within direct video before considering torrent seeds',()=>{
+  assert.deepEqual(rankedSourceIndices([source(1000,'1080p'),source(null,'720p','MP4'),source(null,'1080p','HLS')],'legendado','1080p'),[2,1,0]);
 });
