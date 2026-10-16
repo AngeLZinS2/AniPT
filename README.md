@@ -37,12 +37,14 @@ O site público apresenta as funcionalidades, um vídeo de 30 segundos e os down
 | Episódios | Até 15 por página, busca e imagens com fallback para banner ou capa |
 | Biblioteca pessoal | Favoritos e lista com Quero assistir, Assistindo, Concluído, Pausado e Abandonado |
 | Histórico | Retomada do ponto salvo, edição do progresso e remoção de registros |
-| Player | Vídeo ocupando a tela, controles retráteis, menus de reprodução e painel de fontes com rolagem |
+| Player | Centralizado, tela cheia opcional, controles retráteis, filtros de diretos/torrents e escolha manual preservada |
 | Torrents | Motor integrado, identificação automática do episódio, prioridade por seeds entre torrents e escolha manual preservada, quota e limpeza do cache |
 | Legendas | ASS/SSA/UTF-8 embutidas em MKV torrent, PT automático, idioma, desativação, atraso, tamanho e posição |
 | Preferências | Idioma, qualidade, densidade, histórico e próximo episódio automático |
 | Dados locais | Backup JSON de lista, favoritos, progresso e sinopses, com importação por identidade |
 | Agenda | Horários locais e avisos opcionais enquanto o aplicativo está aberto |
+
+Na seleção automática, o player tenta vídeos diretos compatíveis primeiro e depois os torrents com mais seeds. Ao escolher um servidor manualmente, a escolha é mantida; uma falha oferece retentativa ou troca pela pessoa.
 
 A sinopse original pode receber tradução PT-BR sob demanda pelo MyMemory ou revisão manual. A tradução automática envia a sinopse pública selecionada ao serviço; o texto revisado fica salvo localmente.
 
