@@ -84,19 +84,19 @@ flowchart LR
 
 ### Decisões de implementação
 
-- **Identidade do episódio:** a correspondência entre obra, temporada e IDs das fontes é conferida antes da reprodução. Na Fenix, continuações usam a conversão explícita por episódio para série IMDb, temporada e episódio; respostas com coordenadas conflitantes são descartadas. Playlists HLS sem extensão são identificadas pela resposta da mídia. A temporada mostrada na interface é separada do índice interno da fonte.
+- **Identidade do episódio:** a correspondência entre obra, temporada e IDs das fontes é conferida antes da reprodução. O ID do episódio deve concordar com o número e a temporada local dos metadados. Na Fenix, a conversão explícita por episódio para série IMDb, temporada e episódio também cobre a primeira parte; respostas com coordenadas ou nomes de temporada conflitantes são descartadas. Uma rota canônica alternativa só é consultada quando o mapeamento confirma coordenadas idênticas da primeira parte, sem prequela. Playlists HLS sem extensão são identificadas pela resposta da mídia. A temporada mostrada na interface é separada do índice interno da fonte.
 - **Persistência local:** histórico e favoritos usam SQLite; perfil e recursos da interface usam armazenamento local. Não há cadastro obrigatório.
-- **Escolha automática:** torrents são priorizados pelos seeds informados; o episódio é identificado nos arquivos do pacote. Opções ambíguas ou com falha dão lugar à próxima fonte.
+- **Escolha automática:** vídeos diretos compatíveis têm prioridade; depois, torrents pelos seeds informados. Os arquivos precisam identificar a obra e o episódio; nomes de derivados e temporadas conflitantes são rejeitados. Em modo automático, opções ambíguas ou com falha dão lugar à próxima fonte. A escolha manual não é trocada silenciosamente.
 - **Streaming interno:** torrents são servidos por loopback, com token por processo e suporte a requisições Range para navegação no vídeo. Upload está desativado na compilação.
 - **Uso de recursos:** o mosaico inicial utiliza um único decodificador; sair da apresentação remove vídeo, máscaras e eventos.
 - **Backup delimitado:** o JSON exporta a biblioteca pessoal e as sinopses. URLs privadas das fontes precisam ser reinstaladas e não acompanham o backup.
 
 ## Instalar e experimentar
 
-Versão desktop disponível: **0.3.7**, para **Windows 64 bits**.
+Versão desktop disponível: **0.3.8**, para **Windows 64 bits**.
 
-- **[Instalador Windows](http://173.212.251.120:8085/downloads/AniBR-0.3.7-Setup.exe)** — instalação assistida.
-- **[Versão portátil ZIP](http://173.212.251.120:8085/downloads/AniBR-0.3.7-Portable.zip)** — extraia a pasta e execute `AniBR.exe`.
+- **[Instalador Windows](http://173.212.251.120:8085/downloads/AniBR-0.3.8-Setup.exe)** — instalação assistida.
+- **[Versão portátil ZIP](http://173.212.251.120:8085/downloads/AniBR-0.3.8-Portable.zip)** — extraia a pasta e execute `AniBR.exe`.
 - **[SHA-256 dos arquivos](http://173.212.251.120:8085/downloads/SHA256SUMS.txt)** — conferência dos downloads.
 
 Ambas as versões utilizam WebView2 e os dados locais do perfil do Windows. O portátil dispensa a instalação do aplicativo, mas seus dados não ficam isolados dentro do ZIP.
@@ -128,7 +128,7 @@ npm run build
 
 Os instaladores são gerados em `src-tauri/target/release/bundle/` e o executável em `src-tauri/target/release/anipt.exe`. O nome visível é AniBR; o identificador `br.com.anipt.desktop` preserva a continuidade dos dados locais.
 
-A versão desktop 0.3.7 foi validada com **68 testes de frontend**, **37 testes Rust aprovados** e compilação dos pacotes Windows. Cinco testes Rust que dependem de rede são opcionais e ficam ignorados na execução padrão. A disponibilidade dos serviços externos continua dependendo da rede e das fontes.
+A versão desktop 0.3.8 foi validada com **79 testes de frontend**, **49 testes Rust aprovados** e compilação dos pacotes Windows. Seis testes Rust que dependem de rede são opcionais e ficam ignorados na execução padrão. A disponibilidade dos serviços externos continua dependendo da rede e das fontes.
 
 ## Usar a CLI AniBR
 

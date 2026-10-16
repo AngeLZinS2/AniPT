@@ -21,7 +21,7 @@ fn normalized_title(text: &str) -> String {
         Regex::new(r"\b0*(\d+)(?:st|nd|rd|th|ª|º|a|o)?\s*(season|temporada|part|parte)\b").unwrap()
     });
     let text = ordinal.replace_all(&text, "$2 $1");
-    let season = SEASON.get_or_init(|| Regex::new(r"\b(?:season|temporada)\s*0*(\d+)\b").unwrap());
+    let season = SEASON.get_or_init(|| Regex::new(r"\b(?:season|temporada)\s*0*(\d+)(?:v\d+)?\b").unwrap());
     let text = season.replace_all(&text, "season $1");
     let punctuation = PUNCTUATION.get_or_init(|| Regex::new(r"[^\p{L}\p{N}]+").unwrap());
     punctuation
@@ -94,112 +94,104 @@ impl SeasonIdentity {
     }
 }
 
+
+// Source labels are evidence of a contradiction, never a replacement for the
+// exact video ID. Generic labels are permitted by the Stremio contract.
+fn season_markers(label: &str) -> Vec<u64> {
+    static SEASON: OnceLock<Regex> = OnceLock::new();
+    let normalized = normalized_title(label);
+    let roman = ["i","ii","iii","iv","v","vi","vii","viii","ix","x","xi","xii","xiii","xiv","xv","xvi","xvii","xviii","xix","xx"];
+    SEASON.get_or_init(|| Regex::new(r"\b(?:season|temporada)\s+(\d+|[ivx]+)\b|\b([ivx]+)\s+(?:season|temporada)\b").unwrap())
+        .captures_iter(&normalized).filter_map(|c| {
+            let value=c.get(1).or_else(||c.get(2))?.as_str();
+            value.parse().ok().or_else(||roman.iter().position(|number|*number==value).map(|index|index as u64+1))
+        }).collect()
+}
+
+fn coordinates(label: &str, include_x: bool) -> Vec<(u64, u64)> {
+    static EXPLICIT: OnceLock<Regex> = OnceLock::new();
+    static X: OnceLock<Regex> = OnceLock::new();
+    let label = label.replace('_', " ");
+    let mut pairs = EXPLICIT.get_or_init(|| Regex::new(r"(?i)\b(?:season|temporada|s|t)[ ._-]*0*(\d+)[ ._-]*(?:episode|epis[oó]dio|ep|e)[ ._-]*0*(\d+)(?:v\d+)?\b").unwrap())
+        .captures_iter(&label).filter_map(|c| Some((c[1].parse().ok()?, c[2].parse().ok()?))).collect::<Vec<_>>();
+    if include_x {
+        pairs.extend(X.get_or_init(|| Regex::new(r"(?i)\b0*(\d+)x0*(\d+)(?:v\d+)?\b").unwrap())
+            .captures_iter(&label).filter_map(|c| Some((c[1].parse().ok()?, c[2].parse().ok()?))));
+    }
+    pairs
+}
+
+fn collection_label(label: &str) -> bool {
+    static COLLECTION: OnceLock<Regex> = OnceLock::new();
+    COLLECTION.get_or_init(|| Regex::new(r"(?i)\bs0*\d+\s*[-+]\s*(?:s)?0*\d+\b|complete collection").unwrap()).is_match(label)
+}
+
+fn part_matches(identity: &SeasonIdentity, stream: &StreamSource) -> bool {
+    if !identity.accepts(stream) { return false; }
+    let mut expected = identity.requested.iter().flat_map(|s| season_markers(s)).collect::<Vec<_>>();
+    if expected.is_empty() && !identity.has_prequel { expected.push(1); }
+    // A sequel without an explicit ordinal must be identified by its canonical
+    // ID, not assigned a global season number from a guessed title.
+    expected.is_empty() || season_markers(&stream.quality).iter().all(|s| expected.contains(s))
+}
+
 pub fn filter_streams(streams: &mut Vec<StreamSource>, identity: Option<&SeasonIdentity>) -> usize {
     let before = streams.len();
-    if let Some(identity) = identity {
-        streams.retain(|stream| identity.accepts(stream));
-    }
+    if let Some(identity) = identity { streams.retain(|stream| part_matches(identity, stream)); }
     before - streams.len()
 }
 
-/// In the Fenix IMDb path, a sequel can legitimately carry the base series
-/// title. Validate its explicit S/T + episode coordinates instead. A title
-/// saying "2nd Season" must never override a conflicting T01 EP01.
-pub fn filter_mapped_streams(
-    streams: &mut Vec<StreamSource>,
-    mapped: &crate::episode_ids::ImdbEpisode,
+/// General addons receive one exact video ID. Reject contradictory coordinates
+/// even when no distant sequel appears in AniList's immediate relations.
+pub fn filter_episode_streams(
+    streams: &mut Vec<StreamSource>, identity: Option<&SeasonIdentity>,
+    season: u64, episode: f64,
 ) -> usize {
-    static COORDINATES: OnceLock<Regex> = OnceLock::new();
-    let coordinates=COORDINATES.get_or_init(||Regex::new(r"(?i)\b(?:season|temporada|s|t)\s*0*(\d+)\s*[._-]?\s*(?:episode|epis[oó]dio|ep|e)\s*0*(\d+)\b").unwrap());
-    let before = streams.len();
-    streams.retain(|stream| {
-        coordinates
-            .captures(&stream.quality)
-            .map(|parts| {
-                parts[1].parse::<u64>() == Ok(mapped.season)
-                    && parts[2].parse::<u64>() == Ok(mapped.episode)
-            })
-            .unwrap_or(false)
-    });
-    before - streams.len()
-}
-
-/// Nyaa can return a whole collection instead of a single SxxExx video.
-/// Retain such candidates for explicit file inspection, never autoplay its fileIdx.
-/// Known conflicting parts still cannot masquerade as the requested episode.
-pub fn filter_nyaa_streams(
-    streams: &mut Vec<StreamSource>,
-    mapped: &crate::episode_ids::ImdbEpisode,
-    identity: Option<&SeasonIdentity>,
-) -> usize {
-    static COORDINATES: OnceLock<Regex> = OnceLock::new();
-    static COLLECTION: OnceLock<Regex> = OnceLock::new();
-    static SEASON: OnceLock<Regex> = OnceLock::new();
-    let coordinates = COORDINATES
-        .get_or_init(|| Regex::new(r"(?i)\b(?:s|t)0*(\d+)\s*[._-]?\s*(?:e|ep)0*(\d+)\b").unwrap());
-    let collection = COLLECTION.get_or_init(|| {
-        Regex::new(r"(?i)\bs0*\d+\s*[-+]\s*(?:s)?0*\d+\b|complete collection").unwrap()
-    });
-    let season =
-        SEASON.get_or_init(|| Regex::new(r"(?i)\b(?:season|temporada)\s*0*(\d+)\b").unwrap());
     let before = streams.len();
     streams.retain_mut(|stream| {
-        if stream.format != "Torrent" {
-            return false;
+        if stream.format == "Torrent" && collection_label(&stream.quality) {
+            stream.torrent_file_index = None;
+            stream.requires_file_selection = true;
+            return true; // Inspect actual per-file paths before playback.
         }
-        let is_collection = collection.is_match(&stream.quality);
-        let coords = coordinates
-            .captures_iter(&stream.quality)
-            .map(|parts| {
-                (
-                    parts[1].parse::<u64>().unwrap_or(0),
-                    parts[2].parse::<u64>().unwrap_or(0),
-                )
-            })
-            .collect::<Vec<_>>();
-        if !is_collection {
+        if identity.map(|id| !part_matches(id, stream)).unwrap_or(false) { return false; }
+        coordinates(&stream.quality, true).iter().all(|(s, e)| *s == season && *e as f64 == episode)
+    });
+    before - streams.len()
+}
+
+/// The Fenix IMDb route must explicitly confirm the requested coordinates.
+/// Check every occurrence, including the optional behaviorHints.filename.
+pub fn filter_mapped_streams(streams: &mut Vec<StreamSource>, mapped: &crate::episode_ids::ImdbEpisode) -> usize {
+    let before = streams.len();
+    streams.retain(|stream| {
+        let coords = coordinates(&stream.quality, true);
+        !coords.is_empty() && coords.iter().all(|pair| *pair == (mapped.season, mapped.episode))
+            && season_markers(&stream.quality).iter().all(|s| *s == mapped.season)
+    });
+    before - streams.len()
+}
+
+/// Collections remain candidates until their actual file paths are inspected.
+/// An addon's appended '- 1x1' suffix never identifies a file in a batch.
+pub fn filter_nyaa_streams(
+    streams: &mut Vec<StreamSource>, mapped: &crate::episode_ids::ImdbEpisode,
+    identity: Option<&SeasonIdentity>,
+) -> usize {
+    let before = streams.len();
+    streams.retain_mut(|stream| {
+        if stream.format != "Torrent" { return false; }
+        if !collection_label(&stream.quality) {
             let label = format!(" {} ", normalized_title(&stream.quality));
-            // These parts appeared in the live T1 response with a spurious '- 1x1'
-            // suffix appended by the addon. That suffix is not episode identity.
-            for marker in [
-                "final season",
-                "oad",
-                "ova",
-                "movie",
-                "movies",
-                "special",
-                "specials",
-            ] {
-                let requested_has_marker = identity
-                    .map(|id| {
-                        id.requested
-                            .iter()
-                            .any(|title| format!(" {title} ").contains(&format!(" {marker} ")))
-                    })
-                    .unwrap_or(false);
-                if label.contains(&format!(" {marker} ")) && !requested_has_marker {
-                    return false;
-                }
+            for marker in ["final season", "oad", "ova", "movie", "movies", "special", "specials"] {
+                let expected = identity.map(|id| id.requested.iter().any(|title| format!(" {title} ").contains(&format!(" {marker} ")))).unwrap_or(false);
+                if label.contains(&format!(" {marker} ")) && !expected { return false; }
             }
-            if !coords.is_empty() {
-                return coords
-                    .iter()
-                    .all(|pair| *pair == (mapped.season, mapped.episode));
-            }
-            if let Some(identity) = identity {
-                if !identity.accepts(stream) {
-                    return false;
-                }
-            }
-            if season
-                .captures_iter(&stream.quality)
-                .any(|parts| parts[1].parse::<u64>() != Ok(mapped.season))
-            {
-                return false;
-            }
+            if season_markers(&stream.quality).iter().any(|s| *s != mapped.season) { return false; }
+            let coords = coordinates(&stream.quality, false);
+            if !coords.is_empty() { return coords.iter().all(|pair| *pair == (mapped.season, mapped.episode)); }
+            if identity.map(|id| !id.accepts(stream)).unwrap_or(false) { return false; }
         }
-        // A batch/fileIdx is only a candidate. The user's file choice must be
-        // explicit even when the addon says fileIdx=0 or a previous choice exists.
         stream.torrent_file_index = None;
         stream.requires_file_selection = true;
         true
@@ -373,5 +365,54 @@ mod tests {
         assert_eq!(filter_nyaa_streams(&mut items, &mapped, None), 2);
         assert_eq!(items.len(), 1);
         assert!(!items[0].requires_file_selection);
+    }
+}
+
+
+#[cfg(test)]
+mod episode_regressions {
+    use super::*;
+    fn source(label: &str) -> StreamSource {
+        StreamSource { url:"https://example.test/video".into(), quality:label.into(), language:"Legendado".into(), format:"HLS".into(), is_hls:true, source:"Fixture".into(), torrent_file_index:None, requires_file_selection:false, title:String::new(), seeders:None, episode_target:None }
+    }
+    fn boku() -> SeasonIdentity {
+        SeasonIdentity::from_media(&serde_json::json!({"title":{"english":"My Hero Academia","romaji":"Boku no Hero Academia"},"relations":{"edges":[{"relationType":"SEQUEL","node":{"type":"ANIME","title":{"romaji":"Boku no Hero Academia 2nd Season"}}}]}})).unwrap()
+    }
+    fn mapped() -> crate::episode_ids::ImdbEpisode {
+        crate::episode_ids::ImdbEpisode { series_id:"tt5626028".into(), season:1, episode:1, canonical_season:1, canonical_episode:1 }
+    }
+    #[test]
+    fn boku_first_part_rejects_distant_seasons_and_wrong_episode_without_requiring_all_relations() {
+        let mut streams = ["My Hero Academia S01E01", "Boku no Hero Academia 3rd Season - 01", "Boku no Hero Academia 3ª Temporada - 01", "My Hero Academia T03 EP01", "My Hero Academia S01E02", "1080p"]
+            .into_iter().map(source).collect();
+        assert_eq!(filter_episode_streams(&mut streams,Some(&boku()),1,1.0),4);
+        assert_eq!(streams.len(),2);
+        assert_eq!(streams[1].quality,"1080p");
+    }
+    #[test]
+    fn mapped_fenix_rejects_conflicting_coordinates_in_any_order_and_filename() {
+        let mut streams = ["My Hero Academia T01 EP01", "S01E01 S03E01", "S03E01 S01E01", "T01 EP01\nArquivo: Boku_S03E01.mkv", "3rd Season S01E01", "1080p"]
+            .into_iter().map(source).collect();
+        assert_eq!(filter_mapped_streams(&mut streams,&mapped()),5);
+        assert_eq!(streams.len(),1);
+    }
+    #[test]
+    fn roman_seasons_and_revision_suffixes_do_not_hide_a_conflict() {
+        for label in ["Boku no Hero Academia Season III T01 EP01", "III Season S01E01", "Temporada III S01E01", "Boku no Hero Academia S03E01v2", "My Hero Academia S01E02v2"] {
+            let mut streams=vec![source(label)];
+            assert_eq!(filter_episode_streams(&mut streams,Some(&boku()),1,1.0),1,"{label}");
+            let mut streams=vec![source(label)];
+            assert_eq!(filter_mapped_streams(&mut streams,&mapped()),1,"{label}");
+        }
+        let mut streams=vec![source("Boku no Hero Academia S01E01v2")];
+        assert_eq!(filter_mapped_streams(&mut streams,&mapped()),0);
+    }
+    #[test]
+    fn canonical_sequel_coordinates_are_distinct_from_the_ordinal_in_its_title() {
+        let identity = SeasonIdentity::from_media(&serde_json::json!({"title":{"romaji":"Boku no Hero Academia 3rd Season"},"relations":{"edges":[{"relationType":"PREQUEL"}]}})).unwrap();
+        let mut streams = ["Boku no Hero Academia 3rd Season T01 EP01", "Boku no Hero Academia 2nd Season T01 EP01", "Boku no Hero Academia 3rd Season T01 EP02"]
+            .into_iter().map(source).collect();
+        assert_eq!(filter_episode_streams(&mut streams,Some(&identity),1,1.0),2);
+        assert_eq!(streams.len(),1);
     }
 }

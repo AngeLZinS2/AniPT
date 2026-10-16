@@ -12,7 +12,7 @@ import {serverKey} from './playback';
 import {playerControls} from './player-controls';
 import {embeddedSubtitles} from './embedded-subtitles';
 import {subtitleLabel} from './subtitle-types';
-import {resolveTorrentEpisode,rankedSourceIndices,streamDisplayTitle,nextSourceIndex} from './torrent-selection';
+import {resolveTorrentEpisode,rankedSourceIndices,streamDisplayTitle,nextSourceIndex,torrentPackageConflicts} from './torrent-selection';
 import {displaySeasonNumber} from './season-number';
 import {groupServers} from './server-groups';
 import {animeKey,library,setListStatus,listStatuses,genreLabel,clock,readStored,saveSynopsis,synopsisFor,type ListStatus} from './personal';
@@ -313,6 +313,7 @@ async function openPlayer(episodeNumber:number,season?:number){
       if(stream.format==='Torrent'){
         torrentInfo.hidden=false;torrentInfo.textContent='P2P · upload desativado · arquivos guardados no cache local';
         loading.querySelector('span')!.textContent='Obtendo metadados do torrent… pode demorar se não houver peers';
+        if(stream.title&&torrentPackageConflicts(stream.title,anime.title,[anime.subtitle]))throw new Error('O pacote retornado pela fonte pertence a outra obra.');
         const prepared=await api.prepareTorrent(stream.url);
         if(closing||version!==streamVersion){await api.stopTorrent(prepared.id).catch(()=>{});return;}
         torrentId=prepared.id;

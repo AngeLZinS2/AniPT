@@ -8,12 +8,12 @@ O vídeo mantém a capa Olá e inicia automaticamente, silencioso e dentro da p�
 
 ## Atualizar
 
-Os instaladores não são versionados no Git. Antes de publicar a partir de um clone, coloque o instalador e o ZIP portátil em `website/dist/downloads/`. Para reutilizar a versão pública 0.3.7 e conferir os hashes no PowerShell:
+Os instaladores não são versionados no Git. Antes de publicar a partir de um clone, coloque o instalador e o ZIP portátil em `website/dist/downloads/`. Para reutilizar a versão pública 0.3.8 e conferir os hashes no PowerShell:
 
 ```powershell
 $downloads = 'website/dist/downloads'
 $publicBase = 'http://173.212.251.120:8085/downloads'
-$files = @('AniBR-0.3.7-Setup.exe', 'AniBR-0.3.7-Portable.zip')
+$files = @('AniBR-0.3.8-Setup.exe', 'AniBR-0.3.8-Portable.zip')
 foreach ($file in $files) {
     Invoke-WebRequest "$publicBase/$file" -OutFile "$downloads/$file"
 }

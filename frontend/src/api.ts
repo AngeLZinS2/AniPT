@@ -111,7 +111,7 @@ export const api={
       return numberSeasonFamily([...entries.values()].filter(entry=>['TV','TV_SHORT','ONA'].includes(entry.format)&&entry.status!=='NOT_YET_RELEASED').sort((a,b)=>(a.seasonYear||0)-(b.seasonYear||0)||a.id-b.id).map(fromMedia));
     },300000);
   },
-  async streamReport(anime:Anime,episode:Episode,language='legendado'):Promise<StreamResolution>{if(!isDesktop())throw new Error('Abra o AniBR desktop para usar as fontes de reprodução.');if(episode.anime_id!==anime.id)throw new Error('Este episódio pertence a outra temporada.');const addons=await api.listAddons();return cached(`streams:${JSON.stringify(addons)}:${anime.id}:${anime.provider}:${episode.id}:${language}`,()=>invoke<StreamResolution>('get_streams',{animeId:anime.id,episodeId:episode.id,language,provider:anime.provider||'multi'}),60000)},
+  async streamReport(anime:Anime,episode:Episode,language='legendado'):Promise<StreamResolution>{if(!isDesktop())throw new Error('Abra o AniBR desktop para usar as fontes de reprodução.');if(episode.anime_id!==anime.id)throw new Error('Este episódio pertence a outra temporada.');const addons=await api.listAddons();return cached(`streams:${JSON.stringify(addons)}:${anime.id}:${anime.provider}:${episode.id}:${episode.season}:${episode.number}:${language}`,()=>invoke<StreamResolution>('get_streams',{animeId:anime.id,episodeId:episode.id,season:episode.season,episodeNumber:episode.number,language,provider:anime.provider||'multi'}),60000)},
   async streams(anime:Anime,episode:Episode,language='legendado'):Promise<StreamSource[]>{return (await api.streamReport(anime,episode,language)).streams},
   async episodeAvailable(anime:Anime,episode:Episode):Promise<boolean>{
     if(!isDesktop())return false;

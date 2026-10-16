@@ -216,6 +216,55 @@ mod availability_tests {
         assert!(native_catalog_report(&serde_json::json!({"metas":[{"id":"hianime:fixture"}]})).contains("não comprova reprodução"));
     }
     #[test]
+    fn canonical_alternative_requires_verified_equal_first_part_coordinates() {
+        let first=crate::stream_identity::SeasonIdentity::from_media(&serde_json::json!({"title":{"romaji":"Boku no Hero Academia"}})).unwrap();
+        let sequel=crate::stream_identity::SeasonIdentity::from_media(&serde_json::json!({"title":{"romaji":"Boku no Hero Academia 3rd Season"},"relations":{"edges":[{"relationType":"PREQUEL"}]}})).unwrap();
+        let mut mapped=crate::episode_ids::ImdbEpisode{series_id:"tt5626028".into(),season:1,episode:1,canonical_season:1,canonical_episode:1};
+        assert!(equivalent_first_part(&mapped,Some(&first)));
+        assert!(!equivalent_first_part(&mapped,Some(&sequel)));
+        assert!(!equivalent_first_part(&mapped,None));
+        mapped.season=3;
+        assert!(!equivalent_first_part(&mapped,Some(&first)));
+        mapped.season=1; mapped.episode=39;
+        assert!(!equivalent_first_part(&mapped,Some(&first)));
+    }
+    #[test]
+    fn first_season_fenix_also_requires_verified_imdb_coordinates() {
+        let identity=crate::stream_identity::SeasonIdentity::from_media(&serde_json::json!({"title":{"english":"My Hero Academia","romaji":"Boku no Hero Academia"}})).unwrap();
+        tauri::async_runtime::block_on(async {
+            for mapping in [Ok(None),Err("offline".into())] {
+                let result=source_episode_query("https://fenixflix.fenixhub.online","anime","kitsu:11469:1",&mapping,Some(&identity)).await;
+                assert!(result.err().unwrap().contains("ambígua descartada"));
+            }
+        });
+    }
+    #[test]
+    #[ignore = "live public Fenix source; run explicitly"]
+    fn live_boku_first_and_third_parts_keep_their_verified_episode_ids() {
+        tauri::async_runtime::block_on(async {
+            let base="https://fenixflix.fenixhub.online";
+            for (anime,global) in [("anilist:21459",1),("anilist:100166",3)] {
+                let episodes=episodes(anime,1,"addon:https://anime-kitsu.strem.fun|anime").await.unwrap();
+                let canonical=episodes.iter().find(|episode|episode.number==1.0).expect("Episódio1 ausente").id.as_str();
+                validate_episode_identity(anime,canonical).await.unwrap();
+                let identity=stream_season_identity(anime).await.unwrap();
+                let mapping=verified_episode_mapping(canonical,1,1.0).await;
+                let query=source_episode_query(base,"anime",canonical,&mapping,identity.as_ref()).await.unwrap();
+                assert_eq!(query.episode_id,format!("tt5626028:{global}:1"));
+                assert_eq!(query.kind,"series");
+                let (options,rejected)=resolve_addon_episode(base,"anime",canonical,&mapping,identity.as_ref(),1,1.0).await.unwrap();
+                println!("Boku T{global} EP1: {rejected} respostas contraditórias descartadas");
+                assert!(!options.is_empty(),"A fonte não confirmou coordenadas da parte solicitada");
+                assert!(video_available(&options[0].url).await,"Mídia indisponível");
+                if let Ok(directory)=std::env::var("ANIBR_TEST_MEDIA_DIRECTORY") {
+                    std::fs::create_dir_all(&directory).unwrap();
+                    std::fs::write(std::path::Path::new(&directory).join(format!("boku-s{global}-resolved.json")),serde_json::to_vec(&options).unwrap()).unwrap();
+                }
+                println!("Boku T{global} EP1: identificadores confirmados, {} opções, primeira mídia acessível",options.len());
+            }
+        });
+    }
+    #[test]
     fn sequel_conversion_never_falls_back_on_mapping_failure() {
         assert!(uses_explicit_season_ids("https://fenixflix.fenixhub.online/config"));
         assert!(!uses_explicit_season_ids("https://fenixflix.fenixhub.online.example.test/config"));
@@ -591,7 +640,7 @@ pub async fn episodes(anime_id: &str, season: i64, provider: &str) -> Result<Vec
         let meta=json.get("meta").ok_or("A fonte não encontrou este identificador de anime")?;
         let canonical_id=meta.get("id").and_then(Value::as_str).ok_or("Metadados sem identificador verificável")?;
         validate_season_mapping(anime_id,canonical_id).await?;
-        let videos=meta.get("videos").and_then(Value::as_array).cloned().unwrap_or_default();
+        let videos=crate::episode_ids::validate_metadata_episodes(meta,canonical_id)?;
         if canonical_id.starts_with("kitsu:")&&videos.iter().any(|video|video.get("id").and_then(Value::as_str).map(|id|!id.starts_with(&format!("{canonical_id}:"))).unwrap_or(true)) {
             return Err("A fonte retornou episódios de outro identificador de anime".into());
         }
@@ -663,6 +712,16 @@ pub fn uses_explicit_season_ids(base:&str)->bool {
     reqwest::Url::parse(base).ok().and_then(|url|url.host_str().map(str::to_owned)).as_deref() .map(|host|matches!(host,"fenixflix.fenixhub.online"|"stremio-br-anime.onrender.com")).unwrap_or(false)
 }
 pub async fn mapped_imdb_episode(episode_id:&str)->Result<Option<crate::episode_ids::ImdbEpisode>,String>{
+    let Some(meta)=canonical_episode_metadata(episode_id).await? else { return Ok(None); };
+    crate::episode_ids::from_metadata(&meta,episode_id)
+}
+pub async fn verified_episode_mapping(episode_id:&str,season:i64,episode:f64)->Result<Option<crate::episode_ids::ImdbEpisode>,String>{
+    crate::episode_ids::validate_requested_episode(episode_id,season,episode)?;
+    let Some(meta)=canonical_episode_metadata(episode_id).await? else { return Ok(None); };
+    crate::episode_ids::validate_requested_metadata(&meta,episode_id,season,episode)?;
+    crate::episode_ids::from_metadata(&meta,episode_id)
+}
+async fn canonical_episode_metadata(episode_id:&str)->Result<Option<Value>,String>{
     let Some((canonical,_))=episode_id.rsplit_once(':') else {return Ok(None);};
     let Some(kitsu)=canonical.strip_prefix("kitsu:") else {return Ok(None);};
     if kitsu.is_empty()||!kitsu.chars().all(|c|c.is_ascii_digit()){return Err("Identificador Kitsu inválido para conversão de episódio".into());}
@@ -676,29 +735,70 @@ pub async fn mapped_imdb_episode(episode_id:&str)->Result<Option<crate::episode_
         let meta=data.get("meta").cloned().ok_or("A conversão não retornou metadados desta parte")?;
         if let Ok(mut items)=cache.lock(){items.insert(canonical.into(),(std::time::Instant::now(),meta.clone()));}meta
     };
-    crate::episode_ids::from_metadata(&meta,episode_id)
+    Ok(Some(meta))
 }
 pub struct SourceEpisodeQuery {
     pub episode_id:String,
     pub kind:String,
     pub mapped:Option<crate::episode_ids::ImdbEpisode>,
 }
-pub async fn source_episode_query(base:&str,preferred:&str,episode_id:&str,mapped:&Result<Option<crate::episode_ids::ImdbEpisode>,String>,identity:Option<&crate::stream_identity::SeasonIdentity>)->Result<SourceEpisodeQuery,String>{
-    let is_sequel=identity.map(|value|value.has_prequel).unwrap_or(false);
-    let changes_coordinates=mapped.as_ref().ok().and_then(|value|value.as_ref()).map(|value|value.changes_coordinates()).unwrap_or(false);
+pub async fn source_episode_query(base:&str,preferred:&str,episode_id:&str,mapped:&Result<Option<crate::episode_ids::ImdbEpisode>,String>,_identity:Option<&crate::stream_identity::SeasonIdentity>)->Result<SourceEpisodeQuery,String>{
     let imdb_only=reqwest::Url::parse(base).ok().and_then(|url|url.host_str().map(str::to_owned)).as_deref()==Some("stremio-br-anime.onrender.com");
     let source=if imdb_only {"Nyaa Anime BR"} else {"Fenix"};
-    if uses_explicit_season_ids(base)&&(imdb_only||is_sequel||changes_coordinates){
+    if uses_explicit_season_ids(base){
         let converted=mapped.as_ref().map_err(|_|format!("{source}: conversão de temporada indisponível; consulta ambígua descartada"))?.as_ref().ok_or_else(||format!("{source}: a temporada não tem conversão de episódio confirmada; consulta ambígua descartada"))?;
         let id=converted.stream_id();
         if !episode_support(base,"series",&id).await?{return Err(format!("{source} não aceita o identificador confirmado desta temporada"));}
         return Ok(SourceEpisodeQuery{episode_id:id,kind:"series".into(),mapped:Some(converted.clone())});
+    }
+    if let Ok(Some(converted)) = mapped {
+        let id=converted.stream_id();
+        if matches!(episode_support(base,"series",&id).await,Ok(true)) {
+            return Ok(SourceEpisodeQuery{episode_id:id,kind:"series".into(),mapped:Some(converted.clone())});
+        }
     }
     let support=episode_support(base,preferred,episode_id).await;
     if matches!(support,Ok(true)){return Ok(SourceEpisodeQuery{episode_id:episode_id.into(),kind:preferred.into(),mapped:None});}
     if preferred=="anime"&&matches!(episode_support(base,"series",episode_id).await,Ok(true)){return Ok(SourceEpisodeQuery{episode_id:episode_id.into(),kind:"series".into(),mapped:None});}
     Err(support.err().unwrap_or("Tipo de conteúdo não aceito por esta fonte".into()))
 }
+// The alternative ID is allowed only when both verified coordinate systems
+// identify the same first part. A local S01 in a sequel never authorizes it.
+fn equivalent_first_part(mapped: &crate::episode_ids::ImdbEpisode, identity: Option<&crate::stream_identity::SeasonIdentity>) -> bool {
+    mapped.season==1 && mapped.canonical_season==1 && !mapped.changes_coordinates()
+        && identity.map(|id|!id.has_prequel).unwrap_or(false)
+}
+
+pub async fn resolve_addon_episode(
+    base:&str,preferred:&str,episode_id:&str,
+    mapped:&Result<Option<crate::episode_ids::ImdbEpisode>,String>,
+    identity:Option<&crate::stream_identity::SeasonIdentity>,season:i64,episode:f64,
+)->Result<(Vec<StreamSource>,usize),String>{
+    let query=source_episode_query(base,preferred,episode_id,mapped,identity).await?;
+    let mut options=streams(&query.episode_id,"",&format!("addon:{base}|{}",query.kind)).await?;
+    let mut rejected=if let Some(converted)=query.mapped.as_ref(){
+        if uses_nyaa_batches(base){crate::stream_identity::filter_nyaa_streams(&mut options,converted,identity)}
+        else if uses_explicit_season_ids(base){crate::stream_identity::filter_mapped_streams(&mut options,converted)}
+        else{crate::stream_identity::filter_episode_streams(&mut options,identity,converted.season,converted.episode as f64)}
+    }else{crate::stream_identity::filter_episode_streams(&mut options,identity,season as u64,episode)};
+    if options.is_empty() && uses_explicit_season_ids(base) && !uses_nyaa_batches(base)
+        && query.mapped.as_ref().map(|m|equivalent_first_part(m,identity)).unwrap_or(false)
+        && matches!(episode_support(base,preferred,episode_id).await,Ok(true)) {
+        // Both IDs were mapped per video. This is the same episode's declared
+        // canonical ID, not a title search or a season-one fallback for sequels.
+        let mut canonical=streams(episode_id,"",&format!("addon:{base}|{preferred}")).await?;
+        rejected+=crate::stream_identity::filter_episode_streams(&mut canonical,identity,season as u64,episode);
+        rejected+=crate::stream_identity::filter_mapped_streams(&mut canonical,query.mapped.as_ref().unwrap());
+        options=canonical;
+    }
+    if let Some(converted)=query.mapped.as_ref(){
+        for stream in options.iter_mut().filter(|s|s.format=="Torrent"){
+            stream.episode_target=Some(crate::models::TorrentEpisodeTarget{season:converted.season,episode:converted.episode});
+        }
+    }
+    Ok((options,rejected))
+}
+
 pub async fn stream_season_identity(anime_id:&str)->Result<Option<crate::stream_identity::SeasonIdentity>,String>{
     let Some(id)=anime_id.strip_prefix("anilist:") else {return Ok(None);};
     let id=id.parse::<i64>().map_err(|_|"ID AniList inválido")?;
@@ -773,7 +873,8 @@ pub async fn streams(
             if !matches!(parsed.scheme(),"http"|"https"|"magnet") {return None}
             let title=s.get("title").or_else(||s.get("description")).and_then(Value::as_str).unwrap_or("");
             let name=s.get("name").and_then(Value::as_str).unwrap_or("");
-            let description=format!("{name} {title}");
+            let filename=s.pointer("/behaviorHints/filename").and_then(Value::as_str).unwrap_or("");
+            let description=if filename.is_empty(){format!("{name} {title}")}else{format!("{name} {title}\nArquivo: {filename}")};
             let lower=description.to_lowercase();
             let audio=if Regex::new(r"(?i)\b(dublado|dubbed|dub)\b").ok()?.is_match(&lower) {"Dublado"} else if Regex::new(r"(?i)\b(legendado|subbed|sub)\b").ok()?.is_match(&lower) {"Legendado"} else {"Idioma não informado"};
             let hls=!is_torrent&&parsed.path().to_lowercase().ends_with(".m3u8");

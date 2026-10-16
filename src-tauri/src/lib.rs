@@ -80,10 +80,13 @@ async fn get_episodes(
 async fn get_streams(
     anime_id: String,
     episode_id: String,
+    season: i64,
+    episode_number: f64,
     language: String,
     provider: String,
     s: State<'_, AppState>,
 ) -> Result<StreamResolution, String> {
+    episode_ids::validate_requested_episode(&episode_id,season,episode_number)?;
     provider::validate_episode_identity(&anime_id,&episode_id).await?;
     let identity=provider::stream_season_identity(&anime_id).await?;
     let kind = provider.rsplit_once('|').map(|(_, kind)| kind).unwrap_or("anime");
@@ -91,19 +94,18 @@ async fn get_streams(
     if let Some(spec)=provider.strip_prefix("addon:"){let base=spec.rsplit_once('|').map(|(base,_)|base).unwrap_or(spec);if !addons.iter().any(|item|item==base){addons.push(base.into());}}
     addons.sort_by_key(|url| if url.contains("animesub.duckdns.org") { 0 } else { 1 });
     addons.dedup();
-    let mapped_episode=if addons.iter().any(|base|provider::uses_explicit_season_ids(base)) {provider::mapped_imdb_episode(&episode_id).await} else {Ok(None)};
+    let mapped_episode=Ok(provider::verified_episode_mapping(&episode_id,season,episode_number).await?);
     let mut resolution=StreamResolution{streams:Vec::new(),sources:Vec::new()};
     if !provider.starts_with("addon:") {
         if let Ok(streams)=provider::streams(&episode_id,&language,&provider).await {resolution.streams.extend(streams);}
     }
     for batch in addons.chunks(4) {
         let tasks=batch.iter().map(|base|{
-            let base=base.clone();let preferred=kind.to_string();let episode=episode_id.clone();let language=language.clone();let identity=identity.clone();let mapped_episode=mapped_episode.clone();
+            let base=base.clone();let preferred=kind.to_string();let episode=episode_id.clone();let identity=identity.clone();let mapped_episode=mapped_episode.clone();
             tauri::async_runtime::spawn(async move {
                 let host=reqwest::Url::parse(&base).ok().and_then(|url|url.host_str().map(str::to_string)).unwrap_or("Fonte externa".into());
-                let query=match provider::source_episode_query(&base,&preferred,&episode,&mapped_episode,identity.as_ref()).await {Ok(query)=>query,Err(status)=>return (Vec::new(),SourceDiagnostic{source:host,status})};
-                match provider::streams(&query.episode_id,&language,&format!("addon:{base}|{}",query.kind)).await {
-                    Ok(mut streams)=>{let rejected=if let Some(mapped)=query.mapped.as_ref(){if provider::uses_nyaa_batches(&base){stream_identity::filter_nyaa_streams(&mut streams,mapped,identity.as_ref())}else{stream_identity::filter_mapped_streams(&mut streams,mapped)}}else{stream_identity::filter_streams(&mut streams,identity.as_ref())};if let Some(mapped)=query.mapped.as_ref(){for stream in streams.iter_mut().filter(|s|s.format=="Torrent"){stream.episode_target=Some(TorrentEpisodeTarget{season:mapped.season,episode:mapped.episode});}}let torrents=streams.iter().filter(|s|s.format=="Torrent").count();let mut status=if streams.is_empty(){"Respondeu sem opções compatíveis para este episódio".into()}else{format!("{} vídeos diretos · {} torrents",streams.len()-torrents,torrents)};let pending=streams.iter().filter(|stream|stream.requires_file_selection).count();if pending>0{status.push_str(&format!(" · {pending} pacotes aguardam identificação automática do episódio"));}if rejected>0{status.push_str(&format!(" · {rejected} opções incompatíveis ou sem identificação suficiente descartadas"));}(streams,SourceDiagnostic{source:host,status})},
+                match provider::resolve_addon_episode(&base,&preferred,&episode,&mapped_episode,identity.as_ref(),season,episode_number).await {
+                    Ok((streams,rejected))=>{let torrents=streams.iter().filter(|s|s.format=="Torrent").count();let mut status=if streams.is_empty(){"Respondeu sem opções compatíveis para este episódio".into()}else{format!("{} vídeos diretos · {} torrents",streams.len()-torrents,torrents)};let pending=streams.iter().filter(|stream|stream.requires_file_selection).count();if pending>0{status.push_str(&format!(" · {pending} pacotes aguardam identificação automática do episódio"));}if rejected>0{status.push_str(&format!(" · {rejected} opções incompatíveis ou sem identificação suficiente descartadas"));}(streams,SourceDiagnostic{source:host,status})},
                     Err(error)=>{let status=if error.contains("aviso de bloqueio"){"Bloqueada por limite de requisições; vídeo de aviso descartado".into()}else{error};(Vec::new(),SourceDiagnostic{source:host,status})}
                 }
             })
